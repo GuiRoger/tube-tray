@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões da janela principal",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-hide",
+    "clipboard-manager:allow-read-text",
+    "dialog:allow-open",
+    "notification:default",
+    "opener:default",
+    "autostart:default"
+  ]
+}
