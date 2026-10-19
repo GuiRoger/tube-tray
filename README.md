@@ -2,7 +2,7 @@
 
 App de bandeja (Windows) / barra de menu (macOS) que baixa vídeos do YouTube em MP4 com um clique, usando o **yt-dlp**. Gratuito, sem anúncios e de código aberto (MIT).
 
-**Baixar:** [página do TubeTray](https://guiroger.github.io/tube-tray/) · [versões no GitHub](https://github.com/GuiRoger/tube-tray/releases). O TubeTray é distribuído só por aqui; ele não está na Microsoft Store nem na Mac App Store.
+**Baixar:** [tubetray.vercel.app](https://tubetray.vercel.app/) · [versões no GitHub](https://github.com/GuiRoger/tube-tray/releases). O TubeTray é distribuído só por aqui; ele não está na Microsoft Store nem na Mac App Store.
 
 > **Use com responsabilidade.** Baixe apenas conteúdo que você tem direito de baixar: seus próprios vídeos, conteúdos com licença livre ou com permissão de quem os criou.
 
@@ -90,7 +90,6 @@ src-tauri/
   src/                    app Tauri: bandeja, janela popover, comandos
   icons/                  ícone do app + ícones da bandeja (macos/ e windows/{white,black}/)
 scripts/fetch-ffmpeg.mjs  baixa o ffmpeg por target
-site/                     landing page (GitHub Pages)
 design/                   design system e gerador de ícones
 ```
 
@@ -108,11 +107,11 @@ design/                   design system e gerador de ícones
 
 O TubeTray é gratuito e continua assim, sem nada travado. Se ele te ajuda, você pode apoiar pelo [GitHub Sponsors](https://github.com/sponsors/GuiRoger). Apoiar é opcional e não libera nenhum recurso.
 
-Os links de apoio ficam em `src/lib/support.ts` (app) e no fim de `site/index.html` (página). Para mostrar uma chave Pix, preencha `pixKey` / `PIX_KEY`; vazio, a opção não aparece.
+Os links de apoio do app ficam em `src/lib/support.ts`. Para mostrar uma chave Pix, preencha `pixKey`; vazio, a opção não aparece.
 
 ## Página do projeto
 
-A landing page está em `site/` e é publicada no GitHub Pages pelo workflow `.github/workflows/pages.yml` a cada mudança na pasta. Para ativar uma vez: *Settings → Pages → Source: GitHub Actions*. Os botões de download apontam para os instaladores da **versão mais recente publicada** (rascunhos não contam).
+A landing page fica num projeto separado (pasta `tube-tray-landing-page`), publicado na Vercel em <https://tubetray.vercel.app/>. Os botões de download dela apontam para os instaladores da **versão mais recente publicada** deste repositório (rascunhos não contam), então o repositório precisa ser público.
 
 ## Licença
 

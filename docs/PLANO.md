@@ -12,11 +12,11 @@
 | 1 — Núcleo de download | Concluída |
 | 2 — Bandeja e janela | Concluída, validada no Windows |
 | 3 — Acabamento | Concluída (+ prévia, histórico, arquivos excluídos, ícones vermelhos) |
-| 4 — Empacotamento e distribuição | Em andamento: build no GitHub Actions, teste no Mac, landing page no ar |
+| 4 — Empacotamento e distribuição | Em andamento: build no GitHub Actions, teste no Mac, nova landing page no ar |
 
 Papéis: **Gui** valida, aponta correções e passa requisitos; **Claude** implementa.
 
-Distribuição: só pelo GitHub ([versões](https://github.com/GuiRoger/tube-tray/releases) e [página do projeto](https://guiroger.github.io/tube-tray/)). Mac App Store e Microsoft Store rejeitam esse tipo de app.
+Distribuição: instaladores só pelo GitHub ([versões](https://github.com/GuiRoger/tube-tray/releases)); página do projeto em [tubetray.vercel.app](https://tubetray.vercel.app/) (projeto separado `tube-tray-landing-page`). Mac App Store e Microsoft Store rejeitam esse tipo de app.
 
 ## Visão
 
@@ -47,7 +47,7 @@ Princípios: pequeno, bonito, rápido de abrir, e com o núcleo separado da inte
 - Tema claro/escuro e alto contraste; atalhos Esc, Ctrl/⌘+O, Ctrl/⌘+, e Ctrl/⌘+Q
 - Ajustes → Sobre: versão, link do código-fonte e tela de **Licenças** (TubeTray, yt-dlp, FFmpeg, Tauri, React e lista completa de componentes, com os textos das licenças)
 - "Apoie o desenvolvedor" opcional (GitHub Sponsors; Pix se configurado), sem nada travado
-- Landing page (`site/`) no GitHub Pages com downloads da versão mais recente, instalação e aviso de uso responsável
+- Landing page (projeto `tube-tray-landing-page`, Vercel) com downloads da versão mais recente, instalação, aviso de uso responsável e apoio
 
 **Fora (por enquanto)**
 
@@ -142,8 +142,9 @@ Arquivos do usuário: `%APPDATA%\io.github.guiroger.tubetray\` (Windows) ou `~/L
 - [x] Tela de licenças e avisos de terceiros (`THIRD_PARTY_NOTICES.md`, oferta de código-fonte do FFmpeg)
 - [x] Apoio opcional no app e na página (GitHub Sponsors)
 - [x] Projeto desvinculado da TwinArc (identificador `io.github.guiroger.tubetray`, com migração dos dados)
-- [x] Landing page em `site/` + workflow do GitHub Pages
-- [ ] GitHub Pages ativado (*Settings → Pages → Source: GitHub Actions*)
+- [x] Nova landing page no projeto `tube-tray-landing-page` (design system do app, downloads do último release)
+- [ ] Landing page publicada na Vercel (`npx vercel --prod`)
+- [ ] Repositório `GuiRoger/tube-tray` público (os downloads da página dependem disso)
 - [ ] GitHub Sponsors habilitado na conta (ou chave Pix configurada)
 - [ ] Primeira versão publicada (rascunho do release → *Publish*)
 - [ ] Checklist de validação completo
@@ -208,7 +209,7 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 
 **Página do projeto**
 
-- [ ] Página abre em https://guiroger.github.io/tube-tray/ (claro, escuro e celular)
+- [ ] Página abre em https://tubetray.vercel.app/ (claro, escuro e celular); prévia do link no X/WhatsApp mostra a imagem nova
 - [ ] Botões de download baixam os instaladores da versão publicada
 - [ ] Nenhum texto promove baixar música ou filmes; aviso de uso responsável visível
 
@@ -233,7 +234,7 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 - Ajustes dentro da própria janela, não numa janela separada
 - App gratuito e de código aberto (MIT); apoio só por doação opcional, nunca cobrança pelo download
 - Sem ligação com a TwinArc Systems (identificador, autoria e páginas em nome de GuiRoger)
-- Distribuição só pelo GitHub (releases + GitHub Pages)
+- Distribuição: instaladores pelo GitHub Releases; página na Vercel
 
 ## Depois do MVP
 
