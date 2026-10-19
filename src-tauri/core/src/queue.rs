@@ -74,6 +74,7 @@ fn queued_snapshot() -> Snapshot {
         speed: None,
         eta: None,
         file: None,
+        size: None,
         error: None,
     }
 }
@@ -223,6 +224,15 @@ impl DownloadManager {
         true
     }
 
+    /// Remove um job já finalizado da lista. Retorna `false` se ele ainda
+    /// estiver ativo ou não existir.
+    pub fn remove(&self, id: Uuid) -> bool {
+        let mut jobs = self.inner.jobs.lock().unwrap();
+        let before = jobs.len();
+        jobs.retain(|j| j.id != id || is_active(j.snapshot.stage));
+        jobs.len() != before
+    }
+
     /// Remove da lista os jobs concluídos, com falha ou cancelados.
     pub fn clear_finished(&self) {
         self.inner
@@ -307,7 +317,8 @@ mod tests {
         assert_eq!(job.snapshot.error.as_deref(), Some("sem yt-dlp"));
         let stages: Vec<_> = seen.lock().unwrap().iter().map(|j| j.snapshot.stage).collect();
         assert_eq!(stages, [Stage::Queued, Stage::Starting, Stage::Failed]);
-        m.clear_finished();
+        let id = m.list()[0].id;
+        assert!(m.remove(id));
         assert!(m.list().is_empty());
     }
 }

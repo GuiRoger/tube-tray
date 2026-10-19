@@ -88,6 +88,8 @@ pub struct Snapshot {
     /// segundos restantes da parte atual
     pub eta: Option<u64>,
     pub file: Option<String>,
+    /// tamanho do arquivo final em bytes (quando concluído)
+    pub size: Option<u64>,
     /// mensagem amigável quando `stage == Failed`
     pub error: Option<String>,
 }
@@ -115,6 +117,7 @@ impl Default for Tracker {
                 speed: None,
                 eta: None,
                 file: None,
+                size: None,
                 error: None,
             },
             parts: 1,
@@ -177,6 +180,10 @@ impl Tracker {
                 false
             }
         }
+    }
+
+    pub fn set_size(&mut self, size: Option<u64>) {
+        self.snap.size = size;
     }
 
     pub fn finish(&mut self, stage: Stage, error: Option<String>) {

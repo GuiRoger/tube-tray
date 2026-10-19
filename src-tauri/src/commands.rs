@@ -34,6 +34,11 @@ pub fn retry(state: State<'_, AppState>, id: Uuid) -> bool {
 }
 
 #[tauri::command]
+pub fn remove_job(state: State<'_, AppState>, id: Uuid) -> bool {
+    state.manager.remove(id)
+}
+
+#[tauri::command]
 pub fn clear_finished(state: State<'_, AppState>) -> Vec<Job> {
     state.manager.clear_finished();
     state.manager.list()
@@ -82,6 +87,13 @@ pub fn reveal_file(app: AppHandle, path: String) -> CmdResult<()> {
 }
 
 #[tauri::command]
+pub fn open_file(app: AppHandle, path: String) -> CmdResult<()> {
+    app.opener()
+        .open_path(&path, None::<&str>)
+        .map_err(|e| format!("Não foi possível abrir o arquivo: {e}"))
+}
+
+#[tauri::command]
 pub fn open_out_dir(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
     let dir = state.settings.lock().unwrap().out_dir.clone();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -123,4 +135,9 @@ pub fn hide_window(app: AppHandle) {
 #[tauri::command]
 pub fn set_pinned(pinned: bool) {
     window::set_pinned(pinned);
+}
+
+#[tauri::command]
+pub fn quit_app(app: AppHandle) {
+    app.exit(0);
 }

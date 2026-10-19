@@ -70,7 +70,7 @@ pub async fn ensure_ytdlp(
     let resp = reqwest::Client::builder()
         .user_agent(concat!("TubeTray/", env!("CARGO_PKG_VERSION")))
         .build()
-        .and_then(|c| Ok(c.get(&url)))
+        .map(|c| c.get(&url))
         .map_err(|e| e.to_string())?
         .send()
         .await

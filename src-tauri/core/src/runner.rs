@@ -158,7 +158,13 @@ pub async fn run(
         tracker.finish(Stage::Canceled, None);
     } else {
         match status {
-            Ok(s) if s.success() => tracker.finish(Stage::Done, None),
+            Ok(s) if s.success() => {
+                tracker.finish(Stage::Done, None);
+                if let Some(file) = tracker.snapshot().file.clone() {
+                    let size = tokio::fs::metadata(&file).await.ok().map(|m| m.len());
+                    tracker.set_size(size);
+                }
+            }
             Ok(s) => {
                 let msg = tracker
                     .last_error

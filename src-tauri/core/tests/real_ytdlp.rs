@@ -45,6 +45,7 @@ async fn downloads_and_reports_progress() {
     assert_eq!(snap.title.as_deref(), Some("clip"));
     let file = snap.file.expect("caminho do arquivo final");
     assert!(std::path::Path::new(&file).is_file());
+    assert_eq!(snap.size, Some(std::fs::metadata(&file).unwrap().len()));
     assert!(stages.contains(&Stage::Downloading));
     assert!(percents.windows(2).all(|w| w[1] >= w[0]), "percentual recuou: {percents:?}");
 }

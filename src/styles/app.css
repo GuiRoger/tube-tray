@@ -1,0 +1,587 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 16px;
+  color: var(--label);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Popover ---------- */
+.popover {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  max-height: 520px;
+  background: var(--popover-solid);
+}
+/* macOS: a janela tem vibrancy (.popover); o fundo só tinge por cima */
+html.mac .popover {
+  background: var(--popover);
+  border-radius: var(--r-xl);
+}
+@media (prefers-reduced-transparency: reduce) {
+  html.mac .popover {
+    background: var(--popover-solid);
+  }
+}
+
+.section {
+  padding: 0 var(--sp-3);
+}
+.top {
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.separator {
+  height: 0.5px;
+  background: var(--separator);
+  flex: none;
+}
+
+/* ---------- Header §7.2 ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+}
+.header .app-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  flex: none;
+}
+.header h1 {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--label-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.icon-button .icon {
+  width: 16px;
+  height: 16px;
+}
+.icon-button:hover {
+  background: var(--row-hover);
+  color: var(--label);
+}
+.icon-button:active {
+  background: var(--fill);
+}
+.icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* ---------- Campo de URL §7.3 ---------- */
+.url-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-md);
+  background: var(--field);
+  box-shadow: 0 0 0 0.5px var(--field-border);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.url-field:focus-within {
+  box-shadow: 0 0 0 0.5px var(--field-border), 0 0 0 3px var(--focus-ring);
+}
+.url-field > .icon {
+  color: var(--label-2);
+}
+.url-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  height: 100%;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+.url-field input::placeholder {
+  color: var(--label-3);
+}
+.keycap {
+  flex: none;
+  border: 0;
+  font-size: var(--fs-caption);
+  line-height: 13px;
+  padding: 2px 5px;
+  border-radius: var(--r-xs);
+  background: var(--fill);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+button.keycap:hover {
+  color: var(--label);
+}
+
+.field-message {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--error);
+  animation: fade-in var(--dur-base) var(--ease);
+}
+.field-message .icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------- Botão primário §7.6 ---------- */
+.primary-button {
+  width: 100%;
+  height: 32px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+.primary-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.primary-button:active:not(:disabled) {
+  background: var(--accent-pressed);
+  transform: scale(0.99);
+}
+.primary-button:disabled {
+  opacity: 0.4;
+}
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.6px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ---------- Lista §7.7 ---------- */
+.list {
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2);
+}
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-1) var(--sp-1);
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.link-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: var(--fs-callout);
+  font-weight: 400;
+  color: var(--accent);
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 52px;
+  padding: 6px;
+  border-radius: var(--r-sm);
+  transition: background var(--dur-fast) var(--ease);
+  animation: row-in var(--dur-slow) var(--ease);
+}
+.row:hover {
+  background: var(--row-hover);
+}
+.row-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.row-icon .icon {
+  width: 15px;
+  height: 15px;
+}
+.row-icon.downloading {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+.row-icon.done {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.row-icon.failed {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+}
+.row-icon.canceled {
+  background: var(--fill);
+  color: var(--label-2);
+}
+.row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.row-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-status {
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-status.error {
+  color: var(--error);
+}
+.progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+.progress > div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-base) var(--ease);
+}
+.progress.indeterminate > div {
+  width: 30% !important;
+  animation: indeterminate 1.2s var(--ease) infinite;
+}
+
+/* ações só ocupam espaço no hover, para o título usar a largura toda */
+.row-actions {
+  display: none;
+  gap: 2px;
+  flex: none;
+}
+.row:hover .row-actions,
+.row:focus-within .row-actions {
+  display: flex;
+  animation: fade-in var(--dur-fast) var(--ease);
+}
+.row-actions .icon-button {
+  width: 24px;
+  height: 24px;
+  color: var(--label-3);
+}
+.row-actions .icon-button .icon {
+  width: 14px;
+  height: 14px;
+}
+.row-actions .icon-button:hover {
+  color: var(--label);
+}
+
+/* ---------- Estado vazio §7.8 ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+}
+.empty .icon {
+  width: 28px;
+  height: 28px;
+  color: var(--label-3);
+  margin-bottom: var(--sp-1);
+}
+.empty p {
+  margin: 0;
+  color: var(--label-2);
+}
+.empty small {
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--label-2);
+}
+
+/* ---------- Aviso de uso responsável ---------- */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: var(--sp-2) var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  border-radius: var(--r-lg);
+  background: var(--fill);
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--label-2);
+}
+.notice p {
+  margin: 2px 0 0;
+  flex: 1;
+}
+
+/* ---------- Footer §7.9 ---------- */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-callout);
+  color: var(--label-2);
+  flex: none;
+}
+.footer button {
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-callout);
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.footer button:hover {
+  color: var(--label);
+  background: var(--row-hover);
+}
+.footer .out-dir {
+  min-width: 0;
+  text-align: left;
+}
+.footer kbd {
+  font-family: inherit;
+  color: var(--label-3);
+  margin-left: 4px;
+}
+
+/* ---------- Ajustes ---------- */
+.settings {
+  overflow-y: auto;
+  padding: 0 var(--sp-3) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.settings h2 {
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+  margin: 0 0 var(--sp-1) var(--sp-1);
+}
+.group {
+  border-radius: var(--r-lg);
+  background: var(--fill);
+}
+.group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 36px;
+  padding: 6px var(--sp-3);
+}
+.group-row + .group-row {
+  border-top: 0.5px solid var(--separator);
+}
+.group-row .label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.group-row small {
+  font-size: var(--fs-caption);
+  line-height: 13px;
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-row.error small {
+  color: var(--error);
+}
+
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--track);
+  position: relative;
+  transition: background var(--dur-base) var(--ease);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur-base) var(--ease);
+}
+.switch:checked {
+  background: var(--accent);
+}
+.switch:checked::after {
+  transform: translateX(14px);
+}
+.switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.secondary-button {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--segment-selected);
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.2);
+  font-size: var(--fs-callout);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.secondary-button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+.secondary-button:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- Motion §5 ---------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

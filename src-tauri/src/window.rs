@@ -47,6 +47,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, near_tray: bool) {
     let _ = w.unminimize();
     let _ = w.set_focus();
     let _ = w.emit("window://shown", ());
+    crate::tray::mark_seen(app);
 }
 
 pub fn toggle<R: Runtime>(app: &AppHandle<R>) {

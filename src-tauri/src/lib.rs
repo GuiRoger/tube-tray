@@ -1,4 +1,5 @@
 mod commands;
+mod platform;
 mod state;
 mod tray;
 mod window;
@@ -67,6 +68,8 @@ pub fn run() {
             commands::cancel,
             commands::retry,
             commands::clear_finished,
+            commands::remove_job,
+            commands::open_file,
             commands::list_jobs,
             commands::get_settings,
             commands::set_settings,
@@ -76,6 +79,7 @@ pub fn run() {
             commands::update_ytdlp,
             commands::hide_window,
             commands::set_pinned,
+            commands::quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o TubeTray");
@@ -111,26 +115,26 @@ fn env_provider(
 fn job_sink(app: tauri::AppHandle) -> Sink {
     Arc::new(move |job: &Job| {
         let _ = app.emit(EV_JOB, job);
+        let Some(state) = app.try_state::<AppState>() else { return };
 
-        if let Some(state) = app.try_state::<AppState>() {
-            tray::set_active(&app, state.manager.has_active());
+        let stage = job.snapshot.stage;
+        let window_visible = window::is_visible(&app);
+        tray::note_finished(stage, window_visible);
+        tray::refresh(&app);
 
-            let notify = state.settings.lock().unwrap().notify;
-            let window_visible = window::is_visible(&app);
-            if notify && !window_visible {
-                let title = job.snapshot.title.clone().unwrap_or_else(|| job.url.clone());
-                let body = match job.snapshot.stage {
-                    Stage::Done => Some(("Download concluído", title)),
-                    Stage::Failed => Some((
-                        "Falha no download",
-                        job.snapshot.error.clone().unwrap_or(title),
-                    )),
-                    _ => None,
-                };
-                if let Some((t, b)) = body {
-                    let _ = app.notification().builder().title(t).body(b).show();
-                }
-            }
+        let notify = state.settings.lock().unwrap().notify;
+        if !notify || window_visible {
+            return;
         }
+        let title = job.snapshot.title.clone().unwrap_or_else(|| job.url.clone());
+        let (head, body) = match stage {
+            Stage::Done => ("Download concluído", title),
+            Stage::Failed => (
+                "Falha no download",
+                format!("{title}\n{}", job.snapshot.error.clone().unwrap_or_default()),
+            ),
+            _ => return,
+        };
+        let _ = app.notification().builder().title(head).body(body).show();
     })
 }

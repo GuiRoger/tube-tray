@@ -12,6 +12,8 @@ pub struct Settings {
     /// preencher a URL a partir da área de transferência ao abrir a janela
     pub read_clipboard: bool,
     pub notify: bool,
+    /// aviso de uso responsável já confirmado (DESIGN_SYSTEM §12)
+    pub accepted_notice: bool,
 }
 
 impl Default for Settings {
@@ -22,6 +24,7 @@ impl Default for Settings {
             profile_id: "mp4-h264".into(),
             read_clipboard: true,
             notify: true,
+            accepted_notice: false,
         }
     }
 }

@@ -1,0 +1,92 @@
+/* Tokens do DESIGN_SYSTEM.md §10 (tema segue o sistema). */
+:root {
+  --accent: #ff3b30;
+  --accent-hover: #f2362b;
+  --accent-pressed: #d92f26;
+  --accent-subtle: rgba(255, 59, 48, 0.12);
+  --on-accent: #fff;
+  --success: #34c759;
+  --warning: #ff9500;
+  --error: #d70015;
+  --info: #007aff;
+  --label: rgba(0, 0, 0, 0.85);
+  --label-2: rgba(60, 60, 67, 0.6);
+  --label-3: rgba(60, 60, 67, 0.3);
+  --separator: rgba(0, 0, 0, 0.1);
+  --fill: rgba(0, 0, 0, 0.05);
+  --field: #fff;
+  --field-border: rgba(0, 0, 0, 0.12);
+  --segment-selected: #fff;
+  --track: rgba(0, 0, 0, 0.08);
+  --row-hover: rgba(0, 0, 0, 0.04);
+  --popover: rgba(242, 242, 247, 0.8);
+  /* "Reduzir transparência" / janelas sem vibrancy (Windows) */
+  --popover-solid: #f2f2f7;
+  --focus-ring: rgba(255, 59, 48, 0.4);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --fs-large: 26px;
+  --fs-title3: 15px;
+  --fs-body: 13px;
+  --fs-callout: 12px;
+  --fs-caption: 11px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 7px;
+  --r-lg: 10px;
+  --r-xl: 12px;
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ff453a;
+    --accent-hover: #ff5a50;
+    --accent-pressed: #e63e34;
+    --accent-subtle: rgba(255, 69, 58, 0.18);
+    --success: #30d158;
+    --warning: #ff9f0a;
+    --error: #ff6961;
+    --info: #0a84ff;
+    --label: rgba(255, 255, 255, 0.85);
+    --label-2: rgba(235, 235, 245, 0.6);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --separator: rgba(255, 255, 255, 0.1);
+    --fill: rgba(255, 255, 255, 0.08);
+    --field: rgba(255, 255, 255, 0.06);
+    --field-border: rgba(255, 255, 255, 0.1);
+    --segment-selected: rgba(255, 255, 255, 0.2);
+    --track: rgba(255, 255, 255, 0.12);
+    --row-hover: rgba(255, 255, 255, 0.05);
+    --popover: rgba(36, 36, 38, 0.74);
+    --popover-solid: #242426;
+    --focus-ring: rgba(255, 69, 58, 0.4);
+  }
+}
+
+/* §9: Aumentar contraste */
+@media (prefers-contrast: more) {
+  :root {
+    --accent: #d70015;
+    --accent-hover: #c00013;
+    --accent-pressed: #a80011;
+  }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ff6961;
+    --accent-hover: #ff7f78;
+    --accent-pressed: #e65e57;
+  }
+}

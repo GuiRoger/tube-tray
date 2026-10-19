@@ -25,6 +25,8 @@ export interface Job {
   /** segundos */
   eta: number | null;
   file: string | null;
+  /** bytes do arquivo final */
+  size: number | null;
   error: string | null;
 }
 
@@ -34,6 +36,7 @@ export interface Settings {
   profileId: string;
   readClipboard: boolean;
   notify: boolean;
+  acceptedNotice: boolean;
 }
 
 export const api = {
@@ -41,6 +44,9 @@ export const api = {
   cancel: (id: string) => invoke<boolean>("cancel", { id }),
   retry: (id: string) => invoke<boolean>("retry", { id }),
   clearFinished: () => invoke<Job[]>("clear_finished"),
+  removeJob: (id: string) => invoke<boolean>("remove_job", { id }),
+  openFile: (path: string) => invoke<void>("open_file", { path }),
+  quitApp: () => invoke<void>("quit_app"),
   listJobs: () => invoke<Job[]>("list_jobs"),
   getSettings: () => invoke<Settings>("get_settings"),
   setSettings: (settings: Settings) => invoke<Settings>("set_settings", { settings }),
@@ -58,6 +64,7 @@ export const events = {
   onYtdlpDownload: (cb: (done: number, total: number | null) => void): Promise<UnlistenFn> =>
     listen<[number, number | null]>("tools://ytdlp-download", (e) => cb(e.payload[0], e.payload[1])),
   onWindowShown: (cb: () => void): Promise<UnlistenFn> => listen("window://shown", () => cb()),
+  onOpenSettings: (cb: () => void): Promise<UnlistenFn> => listen("ui://open-settings", () => cb()),
 };
 
 export const isActive = (s: Stage) =>

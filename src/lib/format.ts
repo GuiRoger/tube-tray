@@ -32,3 +32,25 @@ export function looksLikeYoutube(text: string): boolean {
 export function fileName(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
 }
+
+/** "18s restantes", "2 min restantes", "1 h 5 min restantes" */
+export function formatRemaining(seconds: number | null): string {
+  if (seconds == null || !isFinite(seconds) || seconds < 0) return "";
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s restantes`;
+  if (s < 3600) return `${Math.round(s / 60)} min restantes`;
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return m ? `${h} h ${m} min restantes` : `${h} h restantes`;
+}
+
+const nfSize = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
+/** 186 MB, 1,2 GB */
+export function formatSize(bytes: number | null | undefined): string {
+  if (bytes == null || !isFinite(bytes) || bytes <= 0) return "";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  if (mb < 1024) return `${Math.round(mb)} MB`;
+  return `${nfSize.format(mb / 1024)} GB`;
+}

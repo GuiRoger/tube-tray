@@ -8,6 +8,10 @@ interface JobsState {
   /** aplica uma atualização vinda do evento `jobs://update` */
   upsert: (job: Job) => void;
   clearFinished: () => Promise<void>;
+  remove: (id: string) => Promise<void>;
+  /** progresso do download inicial do yt-dlp (0–1), ou null */
+  ytdlpInstall: number | null;
+  setYtdlpInstall: (p: number | null) => void;
 }
 
 export const useJobs = create<JobsState>((set) => ({
@@ -22,6 +26,11 @@ export const useJobs = create<JobsState>((set) => ({
       return { jobs };
     }),
   clearFinished: async () => set({ jobs: await api.clearFinished() }),
+  remove: async (id) => {
+    if (await api.removeJob(id)) set((s) => ({ jobs: s.jobs.filter((j) => j.id !== id) }));
+  },
+  ytdlpInstall: null,
+  setYtdlpInstall: (ytdlpInstall) => set({ ytdlpInstall }),
 }));
 
 export const selectHasFinished = (s: JobsState) => s.jobs.some((j) => !isActive(j.stage));
