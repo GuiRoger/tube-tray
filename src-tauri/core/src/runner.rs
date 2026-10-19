@@ -41,6 +41,9 @@ impl RunSpec {
                 "--no-colors",
                 "--no-playlist",
                 "--no-mtime",
+                // o yt-dlp.exe escreveria no código de página do Windows
+                "--encoding",
+                "utf-8",
                 "--progress-template",
                 PROGRESS_TEMPLATE,
                 "--print",
@@ -160,6 +163,7 @@ pub async fn run(
         match status {
             Ok(s) if s.success() => {
                 tracker.finish(Stage::Done, None);
+                confirm_output(&mut tracker, &spec.out_dir);
                 if let Some(file) = tracker.snapshot().file.clone() {
                     let size = tokio::fs::metadata(&file).await.ok().map(|m| m.len());
                     tracker.set_size(size);
@@ -181,6 +185,27 @@ pub async fn run(
     snap
 }
 
+/// Garante que o caminho guardado é o do arquivo que existe no disco.
+/// Se o caminho informado pelo yt-dlp não existir (ex.: acentos
+/// corrompidos), procura pelo id do vídeo na pasta de destino.
+fn confirm_output(tracker: &mut Tracker, out_dir: &Path) {
+    let reported_ok = tracker
+        .snapshot()
+        .file
+        .as_deref()
+        .is_some_and(|f| Path::new(f).is_file());
+    if reported_ok {
+        return;
+    }
+    let Some(id) = tracker.video_id.clone() else { return };
+    if let Some(found) = crate::files::find_by_id(out_dir, &id) {
+        if tracker.snapshot().title.as_deref().is_none_or(crate::files::is_garbled) {
+            tracker.set_title(crate::files::title_from_file(&found, &id));
+        }
+        tracker.set_file(Some(found.to_string_lossy().into_owned()));
+    }
+}
+
 async fn pump(stream: impl AsyncRead + Unpin, tx: mpsc::UnboundedSender<String>) {
     let mut reader = BufReader::new(stream);
     let mut buf = Vec::with_capacity(256);
@@ -189,8 +214,8 @@ async fn pump(stream: impl AsyncRead + Unpin, tx: mpsc::UnboundedSender<String>)
         match reader.read_until(b'\n', &mut buf).await {
             Ok(0) | Err(_) => break,
             Ok(_) => {
-                // a saída pode não ser UTF-8 válido em consoles antigos do Windows
-                let line = String::from_utf8_lossy(&buf).into_owned();
+                // UTF-8; se não for, Windows-1252 (sem caracteres perdidos)
+                let line = crate::files::decode_output(&buf);
                 if tx.send(line).is_err() {
                     break;
                 }
@@ -263,6 +288,7 @@ mod tests {
         };
         let a = spec.args();
         assert_eq!(&a[..4], ["-S", "vcodec:h264,res,acodec:m4a", "--merge-output-format", "mp4"]);
+        assert!(a.windows(2).any(|w| w == ["--encoding", "utf-8"]));
         assert!(a.windows(2).any(|w| w == ["--ffmpeg-location", "/opt/ffmpeg"]));
         assert!(a.windows(2).any(|w| w == ["-P", "/tmp/out"]));
         assert!(a.windows(2).any(|w| w[0] == "--progress-template" && w[1].starts_with("download:TT_PROGRESS|")));

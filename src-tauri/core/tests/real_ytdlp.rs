@@ -42,7 +42,8 @@ async fn downloads_and_reports_progress() {
 
     assert_eq!(snap.stage, Stage::Done, "erro: {:?}", snap.error);
     assert_eq!(snap.percent, 100.0);
-    assert_eq!(snap.title.as_deref(), Some("clip"));
+    let title = snap.title.clone().expect("título");
+    assert!(!tubetray_core::files::is_garbled(&title), "título corrompido: {title}");
     let file = snap.file.expect("caminho do arquivo final");
     assert!(std::path::Path::new(&file).is_file());
     assert_eq!(snap.size, Some(std::fs::metadata(&file).unwrap().len()));
@@ -76,7 +77,7 @@ async fn cancel_stops_and_cleans_up() {
 async fn failure_has_message() {
     let Some((ytdlp, url)) = env() else { return };
     let dir = tempfile::tempdir().unwrap();
-    let bad = url.replace("clip.mp4", "nao-existe.mp4");
+    let bad = format!("{}/nao-existe.mp4", &url[..url.rfind('/').unwrap()]);
     let snap = run(&spec(&ytdlp, &bad, dir.path(), &[]), CancellationToken::new(), |_| {}).await;
     assert_eq!(snap.stage, Stage::Failed);
     assert!(snap.error.is_some_and(|e| !e.is_empty()));

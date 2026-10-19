@@ -7,8 +7,10 @@
 //! - [`queue`]: fila com um worker, cancelamento e retry
 //! - [`tools`]: baixa/atualiza o yt-dlp e localiza o ffmpeg
 //! - [`settings`]: configurações em JSON
+//! - [`files`]: decodificação da saída e localização do arquivo final
 //! - [`metadata`]: prévia do vídeo (título, canal, miniatura)
 
+pub mod files;
 pub mod metadata;
 pub mod profile;
 pub mod progress;

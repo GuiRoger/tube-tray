@@ -104,6 +104,28 @@ fn file_missing(job: &Job) -> bool {
         && job.snapshot.file.as_deref().is_some_and(|f| !Path::new(f).exists())
 }
 
+/// Antes de dizer que o arquivo sumiu, procura o vídeo pelo id na mesma
+/// pasta: corrige caminhos gravados com acentos corrompidos (e títulos).
+/// Devolve `true` se algo no job mudou.
+fn repair_path(job: &mut Job) -> bool {
+    if !file_missing(job) {
+        return false;
+    }
+    let Some(id) = youtube_url::video_id(&job.url) else { return false };
+    let Some(dir) = job.snapshot.file.as_deref().and_then(|f| Path::new(f).parent()).map(Path::to_path_buf)
+    else {
+        return false;
+    };
+    let Some(found) = crate::files::find_by_id(&dir, &id) else { return false };
+    if job.snapshot.title.as_deref().is_none_or(crate::files::is_garbled) {
+        if let Some(t) = crate::files::title_from_file(&found, &id) {
+            job.snapshot.title = Some(t);
+        }
+    }
+    job.snapshot.file = Some(found.to_string_lossy().into_owned());
+    true
+}
+
 impl DownloadManager {
     pub fn new(env: EnvProvider, sink: Sink) -> Self {
         Self::build(env, sink, None, Vec::new())
@@ -118,6 +140,7 @@ impl DownloadManager {
         jobs.retain(|j| !is_active(j.snapshot.stage));
         for j in &mut jobs {
             j.profile = Profile::by_id(&j.profile_id).unwrap_or_default();
+            repair_path(j);
             j.snapshot.missing = file_missing(j);
         }
         Self::build(env, sink, Some(path), jobs)
@@ -207,7 +230,11 @@ impl DownloadManager {
             // o fim do download chega uma vez só para a UI (sem notificação dupla)
             let repeated = !is_active(snap.stage) && job.snapshot.stage == snap.stage;
             // mantém o título já conhecido se a atualização não trouxer um
-            let title = snap.title.clone().or_else(|| job.snapshot.title.clone());
+            // e nunca troca um título bom por um com acentos corrompidos
+            let title = match (snap.title.clone(), job.snapshot.title.clone()) {
+                (Some(new), Some(old)) if crate::files::is_garbled(&new) && !crate::files::is_garbled(&old) => Some(old),
+                (new, old) => new.or(old),
+            };
             job.snapshot = Snapshot { title, ..snap };
             if repeated {
                 return;
@@ -298,8 +325,9 @@ impl DownloadManager {
             jobs.iter_mut()
                 .filter(|j| j.snapshot.stage == Stage::Done)
                 .filter_map(|j| {
+                    let repaired = repair_path(j);
                     let missing = file_missing(j);
-                    (missing != j.snapshot.missing).then(|| {
+                    (repaired || missing != j.snapshot.missing).then(|| {
                         j.snapshot.missing = missing;
                         j.clone()
                     })
@@ -464,6 +492,20 @@ mod tests {
         assert_eq!(loaded[0].snapshot.title.as_deref(), Some("Vídeo"));
         assert!(!loaded[0].snapshot.missing);
         assert!(m2.refresh_missing().is_empty());
+
+        // caminho gravado com acento corrompido (bug do Windows) é corrigido
+        // ao reabrir, procurando o vídeo pelo id
+        {
+            let mut jobs = m2.inner.jobs.lock().unwrap();
+            jobs[0].snapshot.file = Some(dir.path().join("V\u{FFFD}deo [dQw4w9WgXcQ].mp4").to_string_lossy().into_owned());
+            jobs[0].snapshot.title = Some("V\u{FFFD}deo".into());
+        }
+        m2.save_history();
+        let m3 = DownloadManager::with_history(failing_env(), Arc::new(|_| {}), history.clone());
+        let fixed = &m3.list()[0];
+        assert!(!fixed.snapshot.missing);
+        assert_eq!(fixed.snapshot.title.as_deref(), Some("Vídeo"));
+        assert_eq!(fixed.snapshot.file.as_deref(), Some(file.to_string_lossy().as_ref()));
 
         // usuário apaga o arquivo
         std::fs::remove_file(&file).unwrap();

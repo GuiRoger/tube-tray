@@ -186,6 +186,14 @@ impl Tracker {
         }
     }
 
+    pub fn set_file(&mut self, file: Option<String>) {
+        self.snap.file = file;
+    }
+
+    pub fn set_title(&mut self, title: Option<String>) {
+        self.snap.title = title;
+    }
+
     pub fn set_size(&mut self, size: Option<u64>) {
         self.snap.size = size;
     }
