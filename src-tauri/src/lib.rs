@@ -35,6 +35,7 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let data_dir = app.path().app_data_dir()?;
+            migrate_legacy_data(&data_dir);
             notify::init(&data_dir);
             let downloads = app
                 .path()
@@ -89,6 +90,27 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o TubeTray");
+}
+
+/// Identificador usado até a versão 0.1 (pasta de dados antiga).
+const LEGACY_IDENTIFIER: &str = "com.twinarc.tubetray";
+
+/// Traz ajustes, histórico e yt-dlp da pasta de dados antiga na primeira
+/// execução com o identificador novo. A pasta antiga não é apagada.
+fn migrate_legacy_data(data_dir: &std::path::Path) {
+    let Some(old) = data_dir.parent().map(|p| p.join(LEGACY_IDENTIFIER)) else { return };
+    if !old.is_dir() || data_dir.join(Settings::FILE_NAME).exists() {
+        return;
+    }
+    let _ = std::fs::create_dir_all(data_dir.join("bin"));
+    for name in [Settings::FILE_NAME, "history.json"] {
+        let _ = std::fs::copy(old.join(name), data_dir.join(name));
+    }
+    let ytdlp = tools::ytdlp_path(&old.join("bin"));
+    if ytdlp.is_file() {
+        let _ = std::fs::copy(&ytdlp, tools::ytdlp_path(&data_dir.join("bin")));
+    }
+    log::info!("dados migrados de {}", old.display());
 }
 
 /// Resolve yt-dlp, ffmpeg e pasta de destino no início de cada download.

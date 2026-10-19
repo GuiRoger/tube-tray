@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../lib/tauri";
+import { links, support } from "../lib/support";
 import { shortPath } from "../lib/platform";
 import { useJobs, selectActiveCount } from "../store/jobs";
 import { useSettings } from "../store/settings";
@@ -7,6 +11,7 @@ import { useSettings } from "../store/settings";
 interface Props {
   home: string | null;
   onPickFolder: () => void;
+  onOpenLicenses: () => void;
 }
 
 function Toggle({
@@ -32,16 +37,26 @@ function Toggle({
 }
 
 /** Ajustes (§7.11, versão compacta dentro do popover). */
-export function SettingsView({ home, onPickFolder }: Props) {
+export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
   const { settings, update, error } = useSettings();
   const activeCount = useJobs(selectActiveCount);
   const [version, setVersion] = useState<string | null | undefined>(undefined);
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<{ text: string; error: boolean } | null>(null);
 
+  const [appVersion, setAppVersion] = useState("");
+  const [pixCopied, setPixCopied] = useState(false);
+
   useEffect(() => {
     api.ytdlpVersion().then(setVersion, () => setVersion(null));
+    getVersion().then(setAppVersion, () => {});
   }, []);
+
+  const copyPix = async () => {
+    await writeText(support.pixKey);
+    setPixCopied(true);
+    setTimeout(() => setPixCopied(false), 2000);
+  };
 
   if (!settings) return null;
 
@@ -128,6 +143,54 @@ export function SettingsView({ home, onPickFolder }: Props) {
             >
               {updating && <span className="spinner" aria-hidden="true" />}
               {updating ? "Atualizando…" : version ? "Atualizar" : "Baixar"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Apoie o desenvolvedor</h2>
+        <div className="group">
+          <div className="group-row support-text">
+            O TubeTray é gratuito e continua assim, sem nada travado. Se ele te ajuda, você pode apoiar o
+            desenvolvimento, se quiser.
+          </div>
+          {(support.sponsorsUrl || support.pixKey) && (
+            <div className="group-row license-actions">
+              {support.sponsorsUrl && (
+                <button type="button" className="secondary-button" onClick={() => openUrl(support.sponsorsUrl)}>
+                  GitHub Sponsors
+                </button>
+              )}
+              {support.pixKey && (
+                <button type="button" className="secondary-button" onClick={copyPix} title={support.pixKey}>
+                  {pixCopied ? "Chave Pix copiada" : "Copiar chave Pix"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <h2>Sobre</h2>
+        <div className="group">
+          <div className="group-row">
+            <span className="label">
+              <span>TubeTray {appVersion && `v${appVersion}`}</span>
+              <small>Código aberto · licença MIT</small>
+            </span>
+            <button type="button" className="secondary-button" onClick={onOpenLicenses}>
+              Licenças
+            </button>
+          </div>
+          <div className="group-row">
+            <span className="label">
+              <span>Código-fonte e novas versões</span>
+              <small>github.com/GuiRoger/tube-tray</small>
+            </span>
+            <button type="button" className="secondary-button" onClick={() => openUrl(links.repo)}>
+              Abrir
             </button>
           </div>
         </div>

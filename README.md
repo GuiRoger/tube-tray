@@ -1,6 +1,12 @@
 # TubeTray
 
-App de bandeja (Windows) / barra de menu (macOS) que baixa vídeos do YouTube em MP4 com um clique, usando o **yt-dlp**. O resultado é o mesmo do comando:
+App de bandeja (Windows) / barra de menu (macOS) que baixa vídeos do YouTube em MP4 com um clique, usando o **yt-dlp**. Gratuito, sem anúncios e de código aberto (MIT).
+
+**Baixar:** [página do TubeTray](https://guiroger.github.io/tube-tray/) · [versões no GitHub](https://github.com/GuiRoger/tube-tray/releases). O TubeTray é distribuído só por aqui; ele não está na Microsoft Store nem na Mac App Store.
+
+> **Use com responsabilidade.** Baixe apenas conteúdo que você tem direito de baixar: seus próprios vídeos, conteúdos com licença livre ou com permissão de quem os criou.
+
+O resultado é o mesmo do comando:
 
 ```
 yt-dlp -S "vcodec:h264,res,acodec:m4a" --merge-output-format mp4 "<link>"
@@ -27,7 +33,7 @@ npm run fetch:ffmpeg      # baixa o ffmpeg da sua plataforma para src-tauri/bina
 npm run tauri dev         # abre o app (ícone aparece na bandeja)
 ```
 
-O **yt-dlp** não vem no repositório: o app baixa a versão mais recente do GitHub no primeiro download e guarda na pasta de dados (`%APPDATA%\com.twinarc.tubetray\bin` / `~/Library/Application Support/com.twinarc.tubetray/bin`). Em *Ajustes → Avançado* há o botão **Atualizar**.
+O **yt-dlp** não vem no repositório: o app baixa a versão mais recente do GitHub no primeiro download e guarda na pasta de dados (`%APPDATA%\io.github.guiroger.tubetray\bin` / `~/Library/Application Support/io.github.guiroger.tubetray/bin`). Em *Ajustes → Avançado* há o botão **Atualizar**.
 
 Ver só a interface no navegador, sem Rust (dados simulados):
 
@@ -84,6 +90,7 @@ src-tauri/
   src/                    app Tauri: bandeja, janela popover, comandos
   icons/                  ícone do app + ícones da bandeja (macos/ e windows/{white,black}/)
 scripts/fetch-ffmpeg.mjs  baixa o ffmpeg por target
+site/                     landing page (GitHub Pages)
 design/                   design system e gerador de ícones
 ```
 
@@ -96,6 +103,22 @@ design/                   design system e gerador de ícones
 - O ícone da bandeja (fundo vermelho) mostra o progresso (anel de 10 em 10%) e um aviso de concluído/erro até a janela ser aberta.
 - Cada download que termina gera uma notificação do sistema com o título do vídeo e um ícone de sucesso ou falha. No Windows, clicar na notificação de sucesso mostra o arquivo no Explorer.
 - O histórico dos downloads fica em `history.json` (últimos 100). Se um vídeo baixado for apagado da pasta, ele aparece riscado como "Arquivo excluído", com a opção de baixar de novo.
+
+## Apoie o desenvolvedor
+
+O TubeTray é gratuito e continua assim, sem nada travado. Se ele te ajuda, você pode apoiar pelo [GitHub Sponsors](https://github.com/sponsors/GuiRoger). Apoiar é opcional e não libera nenhum recurso.
+
+Os links de apoio ficam em `src/lib/support.ts` (app) e no fim de `site/index.html` (página). Para mostrar uma chave Pix, preencha `pixKey` / `PIX_KEY`; vazio, a opção não aparece.
+
+## Página do projeto
+
+A landing page está em `site/` e é publicada no GitHub Pages pelo workflow `.github/workflows/pages.yml` a cada mudança na pasta. Para ativar uma vez: *Settings → Pages → Source: GitHub Actions*. Os botões de download apontam para os instaladores da **versão mais recente publicada** (rascunhos não contam).
+
+## Licença
+
+Código do TubeTray: [MIT](LICENSE). FFmpeg (GPL-3.0, embutido) e yt-dlp (baixado no primeiro uso) mantêm suas licenças; veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) e, no app, *Ajustes → Sobre → Licenças*.
+
+Projeto independente, sem afiliação com o YouTube ou o Google.
 
 ## Fora do MVP (próximos passos)
 

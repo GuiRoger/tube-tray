@@ -12,9 +12,11 @@
 | 1 — Núcleo de download | Concluída |
 | 2 — Bandeja e janela | Concluída, validada no Windows |
 | 3 — Acabamento | Concluída (+ prévia, histórico, arquivos excluídos, ícones vermelhos) |
-| 4 — Empacotamento | Em andamento: instalador Windows, build no GitHub Actions, teste no Mac |
+| 4 — Empacotamento e distribuição | Em andamento: build no GitHub Actions, teste no Mac, landing page no ar |
 
 Papéis: **Gui** valida, aponta correções e passa requisitos; **Claude** implementa.
+
+Distribuição: só pelo GitHub ([versões](https://github.com/GuiRoger/tube-tray/releases) e [página do projeto](https://guiroger.github.io/tube-tray/)). Mac App Store e Microsoft Store rejeitam esse tipo de app.
 
 ## Visão
 
@@ -43,6 +45,9 @@ Princípios: pequeno, bonito, rápido de abrir, e com o núcleo separado da inte
 - Aviso de uso responsável na primeira execução
 - ffmpeg embutido; yt-dlp baixado no primeiro uso e atualizável
 - Tema claro/escuro e alto contraste; atalhos Esc, Ctrl/⌘+O, Ctrl/⌘+, e Ctrl/⌘+Q
+- Ajustes → Sobre: versão, link do código-fonte e tela de **Licenças** (TubeTray, yt-dlp, FFmpeg, Tauri, React e lista completa de componentes, com os textos das licenças)
+- "Apoie o desenvolvedor" opcional (GitHub Sponsors; Pix se configurado), sem nada travado
+- Landing page (`site/`) no GitHub Pages com downloads da versão mais recente, instalação e aviso de uso responsável
 
 **Fora (por enquanto)**
 
@@ -90,7 +95,7 @@ tube-tray/
 └─ .github/workflows/build.yml
 ```
 
-Arquivos do usuário: `%APPDATA%\com.twinarc.tubetray\` (Windows) ou `~/Library/Application Support/com.twinarc.tubetray/` (Mac) — `settings.json`, `history.json`, `bin/yt-dlp`.
+Arquivos do usuário: `%APPDATA%\io.github.guiroger.tubetray\` (Windows) ou `~/Library/Application Support/io.github.guiroger.tubetray/` (Mac) — `settings.json`, `history.json`, `bin/yt-dlp`.
 
 ## Plano de execução
 
@@ -134,6 +139,13 @@ Arquivos do usuário: `%APPDATA%\com.twinarc.tubetray\` (Windows) ou `~/Library/
 - [ ] Workflow rodado e instaladores baixados
 - [ ] App instalado no Windows: notificação como "TubeTray" e clique abrindo o arquivo
 - [ ] Teste no Mac (amiga): instalar, baixar, notificação, ícone na barra
+- [x] Tela de licenças e avisos de terceiros (`THIRD_PARTY_NOTICES.md`, oferta de código-fonte do FFmpeg)
+- [x] Apoio opcional no app e na página (GitHub Sponsors)
+- [x] Projeto desvinculado da TwinArc (identificador `io.github.guiroger.tubetray`, com migração dos dados)
+- [x] Landing page em `site/` + workflow do GitHub Pages
+- [ ] GitHub Pages ativado (*Settings → Pages → Source: GitHub Actions*)
+- [ ] GitHub Sponsors habilitado na conta (ou chave Pix configurada)
+- [ ] Primeira versão publicada (rascunho do release → *Publish*)
 - [ ] Checklist de validação completo
 
 ## Checklist de validação
@@ -190,6 +202,15 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 - [ ] W M — "Abrir ao iniciar sessão" liga/desliga de verdade (reiniciar o PC)
 - [ ] W M — Desligar notificações: nenhuma notificação no fim
 - [ ] W M — Atualizar yt-dlp mostra a versão nova
+- [ ] W M — Sobre mostra a versão certa; Licenças abre os textos e "Código-fonte" abre o navegador
+- [ ] W M — Apoie: botão do GitHub Sponsors abre a página certa (e Pix copia a chave, se configurado)
+- [ ] W — Atualizando de uma versão com o identificador antigo: ajustes e histórico continuam lá
+
+**Página do projeto**
+
+- [ ] Página abre em https://guiroger.github.io/tube-tray/ (claro, escuro e celular)
+- [ ] Botões de download baixam os instaladores da versão publicada
+- [ ] Nenhum texto promove baixar música ou filmes; aviso de uso responsável visível
 
 ## Riscos
 
@@ -200,6 +221,8 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 | SmartScreen no Windows | Aviso na 1ª execução | "Mais informações → Executar assim mesmo"; assinatura depois |
 | Saída do yt-dlp em outra codificação | Títulos/caminhos errados | `--encoding utf-8`, leitura com reserva Windows-1252 e busca do arquivo pelo id |
 | WebView diferente por sistema | Pequenas diferenças visuais | CSS simples; checklist nas duas plataformas |
+| Plataforma de pagamento bloquear a conta de apoio | Perda do canal de doações | Apoio opcional e sem contrapartida; GitHub Sponsors/Pix; sem ligação com a TwinArc |
+| Denúncia por violação de direitos autorais | Remoção do repositório/release | Aviso de uso responsável; nada de marketing para música/filmes; sem marca do YouTube |
 
 ## Decisões tomadas
 
@@ -208,6 +231,9 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 - Repositório: `GuiRoger/tube-tray`
 - Ícones da bandeja com fundo vermelho também no Mac (o design system pedia monocromático)
 - Ajustes dentro da própria janela, não numa janela separada
+- App gratuito e de código aberto (MIT); apoio só por doação opcional, nunca cobrança pelo download
+- Sem ligação com a TwinArc Systems (identificador, autoria e páginas em nome de GuiRoger)
+- Distribuição só pelo GitHub (releases + GitHub Pages)
 
 ## Depois do MVP
 

@@ -12,6 +12,7 @@
     "core:window:allow-set-focus",
     "core:window:allow-hide",
     "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
     "dialog:allow-open",
     "opener:default",
     "autostart:default"

@@ -670,3 +670,79 @@ button.keycap:hover {
   text-decoration-color: var(--label-2);
   color: var(--label-2);
 }
+
+/* ---------- Apoio, Sobre e Licenças ---------- */
+.support-text,
+.license-note {
+  font-size: var(--fs-callout);
+  line-height: 16px;
+  color: var(--label-2);
+  display: block;
+}
+.license-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.licenses .lead {
+  margin: 0;
+  font-size: var(--fs-callout);
+  line-height: 16px;
+  color: var(--label-2);
+}
+.license-name {
+  font-weight: 600;
+}
+.licenses .back {
+  align-self: flex-start;
+}
+.license-text {
+  margin: 0;
+  padding: var(--sp-3);
+  border-radius: var(--r-lg);
+  background: var(--fill);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: var(--fs-caption);
+  line-height: 15px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.dep-list {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  border-radius: var(--r-lg);
+  background: var(--fill);
+  overflow: hidden;
+}
+.dep-list li + li {
+  border-top: 0.5px solid var(--separator);
+}
+.dep {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-3);
+  border: 0;
+  background: transparent;
+  font-size: var(--fs-callout);
+  text-align: left;
+}
+.dep:hover {
+  background: var(--row-hover);
+}
+.dep-version,
+.dep-license {
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.dep-license {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

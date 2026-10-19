@@ -14,7 +14,7 @@ const base = { profileId: "mp4-h264", createdAt: Date.now(), file: null, size: n
 const sample: Job[] = [
   { ...base, id: "1", url: "https://www.youtube.com/watch?v=aaaaaaaaaaa", stage: "downloading", title: "Como montar um setup minimalista em 2026", percent: 42, speed: 4.8 * MB, eta: 18 },
   { ...base, id: "2", url: "https://www.youtube.com/watch?v=bbbbbbbbbbb", stage: "queued", title: null, percent: 0 },
-  { ...base, id: "3", url: "https://www.youtube.com/watch?v=ccccccccccc", stage: "done", title: "Lo-fi beats para programar — 3 horas", percent: 100, file: "C:\\Users\\gui\\Downloads\\TubeTray\\lofi.mp4", size: 186 * MB },
+  { ...base, id: "3", url: "https://www.youtube.com/watch?v=ccccccccccc", stage: "done", title: "Aula de Rust: ownership na prática", percent: 100, file: "C:\\Users\\gui\\Downloads\\TubeTray\\aula-rust.mp4", size: 186 * MB },
   { ...base, id: "4", url: "https://www.youtube.com/watch?v=ddddddddddd", stage: "failed", title: "Vídeo removido pelo autor", percent: 0, error: "Vídeo indisponível ou removido." },
   { ...base, id: "5", url: "https://www.youtube.com/watch?v=eeeeeeeeeee", stage: "canceled", title: "Review completo do novo notebook", percent: 0 },
   { ...base, id: "6", url: "https://www.youtube.com/watch?v=fffffffffff", stage: "done", title: "Receita de pão de fermentação natural", percent: 100, file: "/x.mp4", size: 1.3 * 1024 * MB, missing: true },
@@ -68,6 +68,8 @@ mockIPC(
             scenario === "preview-loading" ? 60000 : 400,
           ),
         );
+      case "plugin:app|version":
+        return "0.1.0";
       case "refresh_files":
         return null;
       case "ytdlp_version":
@@ -94,7 +96,15 @@ if (scenario === "invalid") {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.blur();
   }, 300);
-} else if (scenario !== "settings") {
+} else if (scenario !== "settings" && !scenario.startsWith("licenses")) {
   setTimeout(() => emit("window://shown"), 300);
 }
-if (scenario === "settings") setTimeout(() => emit("ui://open-settings"), 300);
+if (scenario === "settings" || scenario.startsWith("licenses")) setTimeout(() => emit("ui://open-settings"), 300);
+if (scenario.startsWith("licenses"))
+  setTimeout(() => {
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Licenças")?.click();
+    if (scenario === "licenses-text")
+      setTimeout(() => [...document.querySelectorAll("button")].find((b) => b.textContent === "Ler GPL-3.0")?.click(), 100);
+    if (scenario === "licenses-all")
+      setTimeout(() => [...document.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Ver outros"))?.click(), 100);
+  }, 500);

@@ -11,11 +11,14 @@ import { UrlForm, type UrlFormHandle } from "./components/UrlForm";
 import { DownloadList } from "./components/DownloadList";
 import { Footer } from "./components/Footer";
 import { SettingsView } from "./components/SettingsView";
+import { LicensesView } from "./components/LicensesView";
 import { Icon } from "./components/Icon";
 
 const WIDTH = 340;
 
-type View = "main" | "settings";
+type View = "main" | "settings" | "licenses";
+
+const TITLES: Record<View, string> = { main: "Baixar vídeo", settings: "Ajustes", licenses: "Licenças" };
 
 export default function App() {
   const [view, setView] = useState<View>("main");
@@ -96,14 +99,15 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        if (view === "settings") setView("main");
+        if (view === "licenses") setView("settings");
+        else if (view === "settings") setView("main");
         else api.hideWindow();
       } else if (hasMod(e) && e.key.toLowerCase() === "o") {
         e.preventDefault();
         api.openOutDir();
       } else if (hasMod(e) && e.key === ",") {
         e.preventDefault();
-        setView((v) => (v === "settings" ? "main" : "settings"));
+        setView((v) => (v === "main" ? "settings" : "main"));
       } else if (hasMod(e) && e.key.toLowerCase() === "q") {
         e.preventDefault();
         api.quitApp();
@@ -117,10 +121,10 @@ export default function App() {
     <div className="popover" ref={root}>
       <div className="top">
         <Header
-          title={view === "settings" ? "Ajustes" : "Baixar vídeo"}
+          title={TITLES[view]}
           onOpenFolder={() => api.openOutDir()}
-          onSettings={() => setView((v) => (v === "settings" ? "main" : "settings"))}
-          settingsActive={view === "settings"}
+          onSettings={() => setView((v) => (v === "main" ? "settings" : "main"))}
+          settingsActive={view !== "main"}
         />
         {view === "main" && <UrlForm ref={form} />}
       </div>
@@ -147,7 +151,11 @@ export default function App() {
           <DownloadList />
         </>
       ) : (
-        <SettingsView home={home} onPickFolder={pickFolder} />
+        view === "settings" ? (
+          <SettingsView home={home} onPickFolder={pickFolder} onOpenLicenses={() => setView("licenses")} />
+        ) : (
+          <LicensesView />
+        )
       )}
 
       <div className="separator" />

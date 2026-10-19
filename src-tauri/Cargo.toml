@@ -5,7 +5,9 @@ members = ["core"]
 name = "tube-tray"
 version = "0.1.0"
 description = "Baixe vídeos do YouTube em MP4 direto da bandeja"
-authors = ["TwinArc Systems"]
+authors = ["GuiRoger"]
+license = "MIT"
+repository = "https://github.com/GuiRoger/tube-tray"
 edition = "2021"
 
 [lib]
