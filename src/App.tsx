@@ -51,6 +51,14 @@ export default function App() {
     return () => unlisten.forEach((p) => p.then((f) => f()));
   }, [loadSettings]);
 
+  // confere de tempos em tempos se algum vídeo baixado foi apagado da pasta
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hasFocus()) api.refreshFiles().catch(() => {});
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   // a janela acompanha a altura do conteúdo (máx. 520, §7.1)
   useEffect(() => {
     const el = root.current;

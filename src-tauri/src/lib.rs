@@ -1,16 +1,17 @@
 mod commands;
-mod platform;
+mod notify;
 mod state;
 mod tray;
 mod window;
 
-use std::sync::{Arc, Mutex};
+use std::collections::HashSet;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
-use tauri_plugin_notification::NotificationExt;
-use tubetray_core::queue::{EnvProvider, Sink};
-use tubetray_core::{tools, DownloadManager, Job, RunEnv, Settings, Stage};
+use tubetray_core::queue::{is_active, EnvProvider, Sink};
+use tubetray_core::{tools, DownloadManager, Job, RunEnv, Settings};
+use uuid::Uuid;
 
 use crate::state::AppState;
 
@@ -25,7 +26,6 @@ pub fn run() {
             window::show(app, false);
         }))
         .plugin(tauri_plugin_positioner::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
@@ -35,6 +35,7 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let data_dir = app.path().app_data_dir()?;
+            notify::init(&data_dir);
             let downloads = app
                 .path()
                 .download_dir()
@@ -43,10 +44,13 @@ pub fn run() {
                 Settings::load(&data_dir).with_default_out_dir(&downloads),
             ));
 
-            let manager = DownloadManager::new(
+            let manager = DownloadManager::with_history(
                 env_provider(app.handle().clone(), data_dir.clone(), settings.clone()),
                 job_sink(app.handle().clone()),
+                data_dir.join("history.json"),
             );
+            // o histórico carregado já foi notificado em sessões anteriores
+            FINISHED.lock().unwrap().extend(manager.list().iter().map(|j| j.id));
             tauri::async_runtime::spawn(manager.clone().run_worker());
 
             app.manage(AppState { manager, settings, data_dir });
@@ -70,6 +74,8 @@ pub fn run() {
             commands::clear_finished,
             commands::remove_job,
             commands::open_file,
+            commands::video_info,
+            commands::refresh_files,
             commands::list_jobs,
             commands::get_settings,
             commands::set_settings,
@@ -110,6 +116,10 @@ fn env_provider(
     })
 }
 
+/// Jobs cujo fim já foi avisado (evita notificar de novo quando só muda,
+/// por exemplo, o aviso de arquivo excluído).
+static FINISHED: LazyLock<Mutex<HashSet<Uuid>>> = LazyLock::new(Default::default);
+
 /// Repassa cada atualização de job para a UI, atualiza o ícone da bandeja
 /// e notifica no fim do download.
 fn job_sink(app: tauri::AppHandle) -> Sink {
@@ -118,23 +128,23 @@ fn job_sink(app: tauri::AppHandle) -> Sink {
         let Some(state) = app.try_state::<AppState>() else { return };
 
         let stage = job.snapshot.stage;
-        let window_visible = window::is_visible(&app);
-        tray::note_finished(stage, window_visible);
-        tray::refresh(&app);
-
-        let notify = state.settings.lock().unwrap().notify;
-        if !notify || window_visible {
-            return;
-        }
-        let title = job.snapshot.title.clone().unwrap_or_else(|| job.url.clone());
-        let (head, body) = match stage {
-            Stage::Done => ("Download concluído", title),
-            Stage::Failed => (
-                "Falha no download",
-                format!("{title}\n{}", job.snapshot.error.clone().unwrap_or_default()),
-            ),
-            _ => return,
+        let just_finished = {
+            let mut finished = FINISHED.lock().unwrap();
+            if is_active(stage) {
+                finished.remove(&job.id); // retry: avisa de novo no fim
+                false
+            } else {
+                finished.insert(job.id)
+            }
         };
-        let _ = app.notification().builder().title(head).body(body).show();
+
+        if just_finished {
+            tray::note_finished(stage, window::is_visible(&app));
+            // avisa sempre que um download termina (com a janela aberta ou não)
+            if state.settings.lock().unwrap().notify {
+                notify::job_finished(&app, job);
+            }
+        }
+        tray::refresh(&app);
     })
 }

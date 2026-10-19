@@ -1,6 +1,6 @@
 //! Ícone e menu da bandeja (Windows) / barra de menu (macOS).
 //!
-//! Estados do ícone (DESIGN_SYSTEM §6.2): ocioso, baixando (anel de progresso
+//! Estados do ícone (DESIGN_SYSTEM §6.2, versão com fundo vermelho): ocioso, baixando (anel de progresso
 //! em 11 quadros de 10 em 10%), concluído não visto (ponto) e erro não visto
 //! ("!"). Os avisos de concluído/erro somem quando a janela é aberta.
 
@@ -42,12 +42,12 @@ macro_rules! tray_set {
     };
 }
 
+// Ícones com fundo vermelho (squircle do ícone do app + glifo branco).
+// macOS usa a versão 64 px (o sistema reduz para 18 pt na barra de menu).
 #[cfg(target_os = "macos")]
 static FRAMES: [&[u8]; 14] = tray_set!("macos");
 #[cfg(not(target_os = "macos"))]
-static FRAMES_WHITE: [&[u8]; 14] = tray_set!("windows/white");
-#[cfg(not(target_os = "macos"))]
-static FRAMES_BLACK: [&[u8]; 14] = tray_set!("windows/black");
+static FRAMES: [&[u8]; 14] = tray_set!("windows");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Icon {
@@ -71,32 +71,10 @@ impl Icon {
 
 static UNSEEN_DONE: AtomicBool = AtomicBool::new(false);
 static UNSEEN_ERROR: AtomicBool = AtomicBool::new(false);
-static CURRENT: Mutex<Option<(Icon, bool)>> = Mutex::new(None);
+static CURRENT: Mutex<Option<Icon>> = Mutex::new(None);
 
 fn frames() -> &'static [&'static [u8]; 14] {
-    #[cfg(target_os = "macos")]
-    {
-        &FRAMES
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        if crate::platform::taskbar_is_light() {
-            &FRAMES_BLACK
-        } else {
-            &FRAMES_WHITE
-        }
-    }
-}
-
-fn light_variant() -> bool {
-    #[cfg(target_os = "macos")]
-    {
-        false
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        crate::platform::taskbar_is_light()
-    }
+    &FRAMES
 }
 
 pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
@@ -111,7 +89,8 @@ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(Image::from_bytes(frames()[Icon::Idle.index()])?)
-        .icon_as_template(cfg!(target_os = "macos"))
+        // colorido: não é template, o macOS não deve inverter
+        .icon_as_template(false)
         .tooltip("TubeTray")
         .menu(&menu)
         // clique esquerdo abre o popover; o menu fica no clique direito
@@ -139,7 +118,7 @@ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             }
         })
         .build(app)?;
-    *CURRENT.lock().unwrap() = Some((Icon::Idle, light_variant()));
+    *CURRENT.lock().unwrap() = Some(Icon::Idle);
     Ok(())
 }
 
@@ -185,19 +164,17 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
         Icon::Idle
     };
 
-    let light = light_variant();
     {
         let mut cur = CURRENT.lock().unwrap();
-        if *cur == Some((icon, light)) {
+        if *cur == Some(icon) {
             return;
         }
-        *cur = Some((icon, light));
+        *cur = Some(icon);
     }
 
     let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
     if let Ok(img) = Image::from_bytes(frames()[icon.index()]) {
         let _ = tray.set_icon(Some(img));
-        let _ = tray.set_icon_as_template(cfg!(target_os = "macos"));
     }
     let tip = match (icon, running) {
         (Icon::Progress(_), Some(j)) => format!("TubeTray — baixando {}%", j.snapshot.percent.floor()),
@@ -213,7 +190,7 @@ fn enqueue_clipboard<R: Runtime>(app: &AppHandle<R>) {
     let text = app.clipboard().read_text().unwrap_or_default();
     let state = app.state::<AppState>();
     let profile = crate::commands::current_profile(&state);
-    if state.manager.enqueue(&text, profile).is_err() {
+    if state.manager.enqueue(&text, profile, None).is_err() {
         // link inválido ou repetido: abre o popover para o usuário ver/colar
         window::show(app, true);
     }

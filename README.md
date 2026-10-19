@@ -32,7 +32,7 @@ O **yt-dlp** não vem no repositório: o app baixa a versão mais recente do Git
 Ver só a interface no navegador, sem Rust (dados simulados):
 
 ```bash
-npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | invalid | settings
+npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | invalid | settings | preview | preview-loading | preview-error
 ```
 
 ## Gerar instalador
@@ -78,8 +78,11 @@ design/                   design system e gerador de ícones
 - O núcleo chama o yt-dlp com o perfil acima e pede linhas próprias de progresso (`--progress-template`, `--print`), em vez de interpretar a saída de texto. Vídeo e áudio viram uma barra só.
 - Um download por vez; os outros ficam na fila. Cancelar encerra o yt-dlp e o ffmpeg e apaga os temporários.
 - Arquivos saem como `Título [id].mp4` na pasta escolhida (padrão `Downloads/TubeTray`).
-- O ícone da bandeja mostra o progresso (anel de 10 em 10%) e um aviso de concluído/erro até a janela ser aberta. No Windows, a cor do ícone segue o tema da barra de tarefas.
+- Ao colar um link, aparece a prévia com miniatura, título e canal (oEmbed do YouTube, sem chave de API).
+- O ícone da bandeja (fundo vermelho) mostra o progresso (anel de 10 em 10%) e um aviso de concluído/erro até a janela ser aberta.
+- Cada download que termina gera uma notificação do sistema com o título do vídeo e um ícone de sucesso ou falha. No Windows, clicar na notificação de sucesso mostra o arquivo no Explorer.
+- O histórico dos downloads fica em `history.json` (últimos 100). Se um vídeo baixado for apagado da pasta, ele aparece riscado como "Arquivo excluído", com a opção de baixar de novo.
 
 ## Fora do MVP (próximos passos)
 
-Card de preview com miniatura, escolha Vídeo/Áudio e qualidade, playlists, pausar/retomar, downloads simultâneos, atalho global, auto-update do app, assinatura de código.
+Escolha Vídeo/Áudio e qualidade, playlists, pausar/retomar, downloads simultâneos, atalho global, auto-update do app, assinatura de código.

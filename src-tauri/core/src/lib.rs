@@ -7,7 +7,9 @@
 //! - [`queue`]: fila com um worker, cancelamento e retry
 //! - [`tools`]: baixa/atualiza o yt-dlp e localiza o ffmpeg
 //! - [`settings`]: configurações em JSON
+//! - [`metadata`]: prévia do vídeo (título, canal, miniatura)
 
+pub mod metadata;
 pub mod profile;
 pub mod progress;
 pub mod queue;
@@ -16,6 +18,7 @@ pub mod settings;
 pub mod tools;
 pub mod youtube_url;
 
+pub use metadata::VideoInfo;
 pub use profile::Profile;
 pub use progress::{Snapshot, Stage};
 pub use queue::{DownloadManager, EnqueueError, Job, RunEnv};

@@ -4,7 +4,7 @@
 //! pedimos linhas próprias com `--progress-template` e `--print`, todas
 //! prefixadas com `TT_`. O resto da saída só é usado para erros e merge.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const PROGRESS_TEMPLATE: &str = "download:TT_PROGRESS|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s";
 pub const META_TEMPLATE: &str = "before_dl:TT_META|%(id)s|%(format_id)s|%(title)s";
@@ -63,7 +63,7 @@ pub fn parse_line(line: &str) -> Option<LineEvent> {
     None
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Stage {
     Queued,
@@ -76,7 +76,7 @@ pub enum Stage {
 }
 
 /// Fotografia do progresso de um download, pronta para a UI.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub stage: Stage,
@@ -92,6 +92,9 @@ pub struct Snapshot {
     pub size: Option<u64>,
     /// mensagem amigável quando `stage == Failed`
     pub error: Option<String>,
+    /// concluído, mas o arquivo foi excluído do disco
+    #[serde(default)]
+    pub missing: bool,
 }
 
 /// Junta os eventos de linha num estado único.
@@ -119,6 +122,7 @@ impl Default for Tracker {
                 file: None,
                 size: None,
                 error: None,
+                missing: false,
             },
             parts: 1,
             part: 0,

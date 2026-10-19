@@ -4,7 +4,7 @@
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
-use tubetray_core::{tools, Job, Profile, Settings};
+use tubetray_core::{tools, Job, Profile, Settings, VideoInfo};
 use uuid::Uuid;
 
 use crate::state::AppState;
@@ -18,9 +18,22 @@ pub fn current_profile(state: &AppState) -> Profile {
 }
 
 #[tauri::command]
-pub fn enqueue(state: State<'_, AppState>, url: String) -> CmdResult<Job> {
+pub fn enqueue(state: State<'_, AppState>, url: String, title: Option<String>) -> CmdResult<Job> {
     let profile = current_profile(&state);
-    state.manager.enqueue(&url, profile).map_err(|e| e.to_string())
+    state.manager.enqueue(&url, profile, title).map_err(|e| e.to_string())
+}
+
+/// Título, canal e miniatura do vídeo colado (prévia antes de baixar).
+#[tauri::command]
+pub async fn video_info(url: String) -> CmdResult<VideoInfo> {
+    tubetray_core::metadata::video_info(&url).await
+}
+
+/// Confere se os vídeos baixados ainda existem; os excluídos chegam à UI
+/// pelo evento de job.
+#[tauri::command]
+pub fn refresh_files(state: State<'_, AppState>) {
+    state.manager.refresh_missing();
 }
 
 #[tauri::command]

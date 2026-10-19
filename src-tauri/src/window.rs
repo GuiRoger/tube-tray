@@ -48,6 +48,10 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, near_tray: bool) {
     let _ = w.set_focus();
     let _ = w.emit("window://shown", ());
     crate::tray::mark_seen(app);
+    // marca na lista os vídeos que o usuário apagou da pasta
+    if let Some(state) = app.try_state::<crate::state::AppState>() {
+        state.manager.refresh_missing();
+    }
 }
 
 pub fn toggle<R: Runtime>(app: &AppHandle<R>) {

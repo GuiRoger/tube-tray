@@ -20,6 +20,7 @@ function statusText(job: Job, ytdlpInstall: number | null): string {
     case "merging":
       return "Finalizando…";
     case "done":
+      if (job.missing) return "Arquivo excluído";
       return ["Concluído", formatSize(job.size)].filter(Boolean).join(" · ");
     case "failed":
       return `Falhou · ${job.error ?? "erro desconhecido"}`;
@@ -61,7 +62,8 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
   const remove = useJobs((s) => s.remove);
   const { stage } = job;
   const active = stage === "queued" || stage === "starting" || stage === "downloading" || stage === "merging";
-  const icon = ROW_ICON[stage];
+  const deleted = stage === "done" && job.missing;
+  const icon = deleted ? { name: "trash" as IconName, cls: "deleted" } : ROW_ICON[stage];
   const status = statusText(job, ytdlpInstall);
   const title = job.title ?? job.url.replace(/^https?:\/\/(www\.)?/, "");
 
@@ -69,8 +71,8 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
 
   return (
     <div
-      className="row"
-      onDoubleClick={stage === "done" ? open : undefined}
+      className={deleted ? "row is-deleted" : "row"}
+      onDoubleClick={stage === "done" && !deleted ? open : undefined}
       aria-label={`${title}, ${status}`}
     >
       <span className={`row-icon ${icon.cls}`}>
@@ -99,7 +101,7 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
 
       <div className="row-actions">
         {active && <Action icon="xmark" label="Cancelar download" onClick={() => api.cancel(job.id)} />}
-        {stage === "done" && job.file && (
+        {stage === "done" && job.file && !deleted && (
           <>
             <Action icon="magnifier" label={revealLabel} onClick={() => api.revealFile(job.file!)} />
             <Action icon="play" label="Abrir" onClick={open} />
@@ -108,6 +110,7 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
         {(stage === "failed" || stage === "canceled") && (
           <Action icon="retry" label="Tentar de novo" onClick={() => api.retry(job.id)} />
         )}
+        {deleted && <Action icon="retry" label="Baixar de novo" onClick={() => api.retry(job.id)} />}
         {!active && <Action icon="trash" label="Remover da lista" onClick={() => remove(job.id)} />}
       </div>
     </div>

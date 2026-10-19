@@ -585,3 +585,88 @@ button.keycap:hover {
     transition-duration: 1ms !important;
   }
 }
+
+/* ---------- Card de prévia §7.4 ---------- */
+.preview {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--fill);
+  animation: fade-in var(--dur-base) var(--ease);
+}
+.preview-thumb {
+  width: 84px;
+  height: 48px;
+  flex: none;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--track);
+}
+.preview-thumb.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--label-3);
+}
+.preview-thumb.placeholder .icon {
+  width: 20px;
+  height: 20px;
+}
+.preview-error .preview-thumb.placeholder {
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+}
+.preview-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.preview-title {
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.preview-meta {
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--track) 0%, var(--fill) 50%, var(--track) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+.skeleton.line {
+  height: 11px;
+  border-radius: 4px;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* ---------- Vídeo excluído da pasta ---------- */
+.row-icon.deleted {
+  background: var(--fill);
+  color: var(--label-2);
+}
+.row.is-deleted .row-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--label-2);
+  color: var(--label-2);
+}

@@ -7,6 +7,11 @@ use url::Url;
 /// só o vídeo seja baixado (playlists ficam fora do MVP).
 /// Retorna `None` se não for um link de vídeo do YouTube.
 pub fn normalize(input: &str) -> Option<String> {
+    video_id(input).map(|id| format!("https://www.youtube.com/watch?v={id}"))
+}
+
+/// Extrai o id de 11 caracteres de um link de vídeo do YouTube.
+pub fn video_id(input: &str) -> Option<String> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return None;
@@ -39,7 +44,7 @@ pub fn normalize(input: &str) -> Option<String> {
         _ => None,
     }?;
 
-    is_video_id(&id).then(|| format!("https://www.youtube.com/watch?v={id}"))
+    is_video_id(&id).then_some(id)
 }
 
 fn is_video_id(id: &str) -> bool {

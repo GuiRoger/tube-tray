@@ -6,9 +6,10 @@ import type { Job, Settings } from "../lib/tauri";
 
 const params = new URLSearchParams(location.search);
 const scenario = params.get("s") ?? "list";
+const hasPreview = scenario.startsWith("preview");
 
 const MB = 1024 * 1024;
-const base = { profileId: "mp4-h264", createdAt: Date.now(), file: null, size: null, error: null, speed: null, eta: null };
+const base = { profileId: "mp4-h264", createdAt: Date.now(), file: null, size: null, error: null, speed: null, eta: null, missing: false };
 
 const sample: Job[] = [
   { ...base, id: "1", url: "https://www.youtube.com/watch?v=aaaaaaaaaaa", stage: "downloading", title: "Como montar um setup minimalista em 2026", percent: 42, speed: 4.8 * MB, eta: 18 },
@@ -16,10 +17,10 @@ const sample: Job[] = [
   { ...base, id: "3", url: "https://www.youtube.com/watch?v=ccccccccccc", stage: "done", title: "Lo-fi beats para programar — 3 horas", percent: 100, file: "C:\\Users\\gui\\Downloads\\TubeTray\\lofi.mp4", size: 186 * MB },
   { ...base, id: "4", url: "https://www.youtube.com/watch?v=ddddddddddd", stage: "failed", title: "Vídeo removido pelo autor", percent: 0, error: "Vídeo indisponível ou removido." },
   { ...base, id: "5", url: "https://www.youtube.com/watch?v=eeeeeeeeeee", stage: "canceled", title: "Review completo do novo notebook", percent: 0 },
-  { ...base, id: "6", url: "https://www.youtube.com/watch?v=fffffffffff", stage: "done", title: "Receita de pão de fermentação natural", percent: 100, file: "/x.mp4", size: 1.3 * 1024 * MB },
+  { ...base, id: "6", url: "https://www.youtube.com/watch?v=fffffffffff", stage: "done", title: "Receita de pão de fermentação natural", percent: 100, file: "/x.mp4", size: 1.3 * 1024 * MB, missing: true },
 ];
 
-let jobs: Job[] = scenario === "empty" ? [] : sample;
+let jobs: Job[] = scenario === "empty" ? [] : hasPreview ? sample.slice(2, 6) : sample;
 let settings: Settings = {
   outDir: "C:\\Users\\gui\\Downloads\\TubeTray",
   launchAtLogin: false,
@@ -50,12 +51,32 @@ mockIPC(
       case "remove_job":
         jobs = jobs.filter((j) => j.id !== a.id);
         return true;
+      case "video_info":
+        // simula a latência da busca
+        return new Promise((resolve, reject) =>
+          setTimeout(
+            () =>
+              scenario === "preview-error"
+                ? reject("Vídeo privado ou com restrição.")
+                : resolve({
+                    id: "dQw4w9WgXcQ",
+                    url: String(a.url),
+                    title: "Como montar um setup minimalista para home office em 2026 — guia completo",
+                    channel: "Canal Setup Brasil",
+                    thumbnail: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#2b5876"/><stop offset="1" stop-color="#4e4376"/></linearGradient></defs><rect width="320" height="180" fill="url(#g)"/><circle cx="160" cy="90" r="34" fill="rgba(255,255,255,.85)"/><path d="M150 72v36l30-18z" fill="#4e4376"/></svg>'),
+                  }),
+            scenario === "preview-loading" ? 60000 : 400,
+          ),
+        );
+      case "refresh_files":
+        return null;
       case "ytdlp_version":
         return "2026.08.19";
       case "plugin:path|resolve_directory":
         return "C:\\Users\\gui";
       case "plugin:clipboard-manager|read_text":
-        return scenario === "invalid" ? "https://vimeo.com/123" : "https://youtu.be/dQw4w9WgXcQ";
+        if (scenario === "invalid") return "https://vimeo.com/123";
+        return hasPreview ? "https://youtu.be/dQw4w9WgXcQ" : "";
       default:
         return null;
     }

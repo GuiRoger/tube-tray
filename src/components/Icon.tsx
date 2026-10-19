@@ -3,6 +3,7 @@ import checkCircle from "../assets/icons/check-circle.svg?raw";
 import clipboard from "../assets/icons/clipboard.svg?raw";
 import download from "../assets/icons/download.svg?raw";
 import exclamation from "../assets/icons/exclamation.svg?raw";
+import film from "../assets/icons/film.svg?raw";
 import folder from "../assets/icons/folder.svg?raw";
 import gear from "../assets/icons/gear.svg?raw";
 import link from "../assets/icons/link.svg?raw";
@@ -18,6 +19,7 @@ const icons = {
   clipboard,
   download,
   exclamation,
+  film,
   folder,
   gear,
   link,

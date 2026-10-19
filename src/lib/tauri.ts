@@ -28,6 +28,16 @@ export interface Job {
   /** bytes do arquivo final */
   size: number | null;
   error: string | null;
+  /** concluído, mas o arquivo foi excluído do disco */
+  missing: boolean;
+}
+
+export interface VideoInfo {
+  id: string;
+  url: string;
+  title: string;
+  channel: string;
+  thumbnail: string;
 }
 
 export interface Settings {
@@ -40,7 +50,9 @@ export interface Settings {
 }
 
 export const api = {
-  enqueue: (url: string) => invoke<Job>("enqueue", { url }),
+  enqueue: (url: string, title?: string | null) => invoke<Job>("enqueue", { url, title: title ?? null }),
+  videoInfo: (url: string) => invoke<VideoInfo>("video_info", { url }),
+  refreshFiles: () => invoke<void>("refresh_files"),
   cancel: (id: string) => invoke<boolean>("cancel", { id }),
   retry: (id: string) => invoke<boolean>("retry", { id }),
   clearFinished: () => invoke<Job[]>("clear_finished"),

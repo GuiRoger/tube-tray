@@ -1,9 +1,13 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
-import { api } from "../lib/tauri";
+import { api, type VideoInfo } from "../lib/tauri";
 import { looksLikeYoutube } from "../lib/format";
 import { modKey } from "../lib/platform";
 import { Icon } from "./Icon";
+import { VideoPreview, type PreviewState } from "./VideoPreview";
+
+/** prévias já buscadas nesta sessão (por link) */
+const previewCache = new Map<string, VideoInfo>();
 
 export interface UrlFormHandle {
   /** Preenche com o link da área de transferência (se for do YouTube). */
@@ -23,8 +27,38 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
   /** último valor preenchido automaticamente: só ele pode ser trocado sem perguntar */
   const autoFilled = useRef<string | null>(null);
 
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+
   const trimmed = url.trim();
   const valid = looksLikeYoutube(trimmed);
+
+  // prévia (título + miniatura) quando há um link válido no campo
+  useEffect(() => {
+    if (!valid) {
+      setPreview(null);
+      return;
+    }
+    const cached = previewCache.get(trimmed);
+    if (cached) {
+      setPreview({ kind: "ready", info: cached });
+      return;
+    }
+    let stale = false;
+    setPreview({ kind: "loading" });
+    const timer = setTimeout(() => {
+      api.videoInfo(trimmed).then(
+        (info) => {
+          previewCache.set(trimmed, info);
+          if (!stale) setPreview({ kind: "ready", info });
+        },
+        (err) => !stale && setPreview({ kind: "error", message: String(err) }),
+      );
+    }, 250);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+  }, [trimmed, valid]);
   const shownError = error ?? (touched && trimmed && !valid ? INVALID : null);
 
   const fill = (text: string) => {
@@ -71,7 +105,7 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
     if (!valid || busy) return;
     setBusy(true);
     try {
-      await api.enqueue(trimmed);
+      await api.enqueue(trimmed, preview?.kind === "ready" ? preview.info.title : null);
       setUrl("");
       setTouched(false);
       setError(null);
@@ -109,6 +143,8 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
           {modKey}V
         </button>
       </label>
+
+      {preview && !shownError && <VideoPreview key={trimmed} state={preview} />}
 
       {shownError && (
         <div className="field-message" role="alert">
