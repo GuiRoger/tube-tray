@@ -210,7 +210,7 @@ Rode antes de cada versão. Marque Windows (W) e Mac (M).
 **Página do projeto**
 
 - [ ] Página abre em https://tubetray.vercel.app/ (claro, escuro e celular); prévia do link no X/WhatsApp mostra a imagem nova
-- [ ] Botões de download baixam os instaladores da versão publicada
+- [ ] Botões de download do site e links do README baixam direto o instalador da versão publicada (`releases/latest/download/TubeTray-…`)
 - [ ] Nenhum texto promove baixar música ou filmes; aviso de uso responsável visível
 
 ## Riscos

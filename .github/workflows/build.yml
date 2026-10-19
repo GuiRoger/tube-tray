@@ -55,6 +55,22 @@ jobs:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: TubeTray ${{ github.ref_name }}
           releaseDraft: true
+      # Cópia com nome fixo no release, para links diretos que sempre baixam a
+      # última versão: releases/latest/download/TubeTray-windows-x64-setup.exe
+      - name: Instalador com nome fixo
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bundle="src-tauri/target/${{ matrix.target }}/release/bundle"
+          case "${{ matrix.target }}" in
+            x86_64-pc-windows-msvc) src=$(ls "$bundle"/nsis/*-setup.exe | head -1); dst=TubeTray-windows-x64-setup.exe ;;
+            aarch64-apple-darwin)   src=$(ls "$bundle"/dmg/*.dmg | head -1);       dst=TubeTray-macos-apple-silicon.dmg ;;
+            x86_64-apple-darwin)    src=$(ls "$bundle"/dmg/*.dmg | head -1);       dst=TubeTray-macos-intel.dmg ;;
+          esac
+          cp "$src" "$dst"
+          gh release upload "${{ github.ref_name }}" "$dst" --clobber --repo "${{ github.repository }}"
       - uses: actions/upload-artifact@v4
         with:
           name: TubeTray-${{ matrix.target }}
