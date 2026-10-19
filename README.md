@@ -41,7 +41,21 @@ npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | inv
 npm run tauri build       # Windows: .exe (NSIS) · macOS: .app/.dmg
 ```
 
-O workflow `.github/workflows/build.yml` gera os instaladores de Windows e macOS (Apple Silicon e Intel) a cada tag `v*`.
+O workflow `.github/workflows/build.yml` gera os instaladores de Windows e macOS (Apple Silicon e Intel). Ele roda a cada tag `v*` ou manualmente em *Actions → build → Run workflow*; os instaladores ficam em *Artifacts* no fim da execução.
+
+### Instalar no Mac (app sem assinatura da Apple)
+
+1. Use o `.dmg` certo: **aarch64** para Mac com chip Apple (M1/M2/M3/M4), **x86_64** para Mac Intel ( → Sobre este Mac).
+2. Abra o `.dmg` e arraste o TubeTray para **Aplicativos**.
+3. No Terminal, rode uma vez: `xattr -cr /Applications/TubeTray.app`
+   (sem isso o macOS diz que o app "está danificado", porque ele não tem assinatura da Apple).
+4. Abra o TubeTray: o ícone vermelho aparece na barra de menu, perto do relógio. Na primeira notificação, permita notificações para o app.
+
+### Instalar no Windows
+
+Rode o `TubeTray_x.y.z_x64-setup.exe`. Se o SmartScreen avisar, clique em *Mais informações → Executar assim mesmo* (o instalador ainda não tem assinatura de código).
+
+O plano do projeto e o **checklist de validação** de cada versão ficam em [`docs/PLANO.md`](docs/PLANO.md).
 
 ## Testes
 

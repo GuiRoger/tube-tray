@@ -17,8 +17,24 @@
         "alwaysOnTop": true,
         "shadow": true,
         "transparent": true,
-        "windowEffects": { "effects": ["popover"], "state": "active", "radius": 12 }
+        "windowEffects": {
+          "effects": [
+            "popover"
+          ],
+          "state": "active",
+          "radius": 12
+        }
       }
     ]
+  },
+  "bundle": {
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-"
+    }
   }
 }
