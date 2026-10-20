@@ -116,14 +116,13 @@ npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | inv
 ### Publicar uma versão
 
 ```bash
-# 1. suba a versão em src-tauri/tauri.conf.json, src-tauri/Cargo.toml e package.json
-git tag v0.1.0
+git tag v0.1.2
 git push --tags
 ```
 
-O workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) roda os testes, gera os instaladores de Windows, Mac Apple Silicon e Mac Intel e cria um **release em rascunho** com eles, incluindo as cópias com nome fixo (`TubeTray-windows-x64-setup.exe`, `TubeTray-macos-apple-silicon.dmg`, `TubeTray-macos-intel.dmg`). Confira e clique em **Publish**: a partir daí os links de [Baixar](#baixar) e os botões do site entregam essa versão. Para gerar só os instaladores, sem release: *Actions → build → Run workflow* (ficam em *Artifacts*).
+O workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) pega a versão da tag (não precisa editar arquivos), roda os testes, gera os instaladores de Windows, Mac Apple Silicon e Mac Intel, sobe também as cópias com nome fixo (`TubeTray-windows-x64-setup.exe`, `TubeTray-macos-apple-silicon.dmg`, `TubeTray-macos-intel.dmg`) e, quando os três terminam, **publica o release** como *Latest*. A partir daí os links de [Baixar](#baixar) e os botões do site baixam essa versão direto. Leva uns 15 minutos.
 
-Localmente: `npm run tauri build` (Windows: `.exe` NSIS · macOS: `.app`/`.dmg`).
+Para gerar só os instaladores, sem release: *Actions → build → Run workflow* (ficam em *Artifacts*). Localmente: `npm run tauri build`.
 
 ### Testes
 
