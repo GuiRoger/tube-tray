@@ -54,3 +54,21 @@ export function formatSize(bytes: number | null | undefined): string {
   if (mb < 1024) return `${Math.round(mb)} MB`;
   return `${nfSize.format(mb / 1024)} GB`;
 }
+
+/** Id da playlist (`list=`) do link, se houver. */
+export function playlistParam(text: string): string | null {
+  const m = /[?&]list=([\w-]{2,64})/.exec(text.trim());
+  return m ? m[1] : null;
+}
+
+/** O link aponta para um vídeo (não só para uma playlist). */
+export function hasVideo(text: string): boolean {
+  const t = text.trim();
+  return /[?&]v=[\w-]{11}/.test(t) || /(youtu\.be|\/shorts|\/live|\/embed)\/[\w-]{11}/.test(t);
+}
+
+/** Duração de vídeo: "4:05", "1:02:03". */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null || !isFinite(seconds) || seconds <= 0) return "";
+  return formatEta(seconds);
+}

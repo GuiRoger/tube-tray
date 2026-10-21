@@ -3,8 +3,9 @@ use url::Url;
 /// Valida e normaliza uma URL de vídeo do YouTube.
 ///
 /// Aceita `youtube.com/watch?v=`, `youtu.be/<id>`, `/shorts/<id>`, `/live/<id>`,
-/// `/embed/<id>` e `music.youtube.com`. Remove parâmetros de playlist para que
-/// só o vídeo seja baixado (playlists ficam fora do MVP).
+/// `/embed/<id>` e `music.youtube.com`. Remove parâmetros de playlist: o
+/// download é sempre de um vídeo; playlists viram vários jobs (ver
+/// [`playlist_url`]).
 /// Retorna `None` se não for um link de vídeo do YouTube.
 pub fn normalize(input: &str) -> Option<String> {
     video_id(input).map(|id| format!("https://www.youtube.com/watch?v={id}"))
@@ -47,6 +48,43 @@ pub fn video_id(input: &str) -> Option<String> {
     is_video_id(&id).then_some(id)
 }
 
+fn parse(input: &str) -> Option<Url> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let with_scheme = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        trimmed.to_string()
+    } else {
+        format!("https://{trimmed}")
+    };
+    let url = Url::parse(&with_scheme).ok()?;
+    let host = url.host_str()?.to_ascii_lowercase();
+    let host = host.strip_prefix("www.").unwrap_or(&host);
+    let host = host.strip_prefix("m.").unwrap_or(host);
+    matches!(host, "youtube.com" | "music.youtube.com" | "youtu.be").then_some(url)
+}
+
+/// Id da playlist (`list=`) de um link do YouTube, se houver.
+pub fn playlist_id(input: &str) -> Option<String> {
+    let url = parse(input)?;
+    let id = url.query_pairs().find(|(k, _)| k == "list").map(|(_, v)| v.into_owned())?;
+    let ok = (2..=64).contains(&id.len())
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    ok.then_some(id)
+}
+
+/// Link canônico para listar uma playlist com o yt-dlp. Mixes (`RD…`)
+/// só existem junto de um vídeo, então mantêm o `v=`.
+pub fn playlist_url(input: &str) -> Option<String> {
+    let list = playlist_id(input)?;
+    match video_id(input) {
+        Some(v) if list.starts_with("RD") => Some(format!("https://www.youtube.com/watch?v={v}&list={list}")),
+        _ if list.starts_with("RD") => None,
+        _ => Some(format!("https://www.youtube.com/playlist?list={list}")),
+    }
+}
+
 fn is_video_id(id: &str) -> bool {
     id.len() == 11
         && id
@@ -56,7 +94,7 @@ fn is_video_id(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize;
+    use super::{normalize, playlist_id, playlist_url};
 
     const ID: &str = "dQw4w9WgXcQ";
 
@@ -97,5 +135,22 @@ mod tests {
         ] {
             assert_eq!(normalize(input), None, "input: {input}");
         }
+    }
+
+    #[test]
+    fn playlists() {
+        assert_eq!(playlist_id("https://www.youtube.com/playlist?list=PLabc_123-x"), Some("PLabc_123-x".into()));
+        assert_eq!(
+            playlist_url(&format!("https://www.youtube.com/watch?v={ID}&list=PL123&index=2")),
+            Some("https://www.youtube.com/playlist?list=PL123".into())
+        );
+        assert_eq!(
+            playlist_url(&format!("https://youtu.be/{ID}?list=RDabc")),
+            Some(format!("https://www.youtube.com/watch?v={ID}&list=RDabc"))
+        );
+        assert_eq!(playlist_url("https://www.youtube.com/playlist?list=RDabc"), None);
+        assert_eq!(playlist_id(&format!("https://youtu.be/{ID}")), None);
+        assert_eq!(playlist_id("https://vimeo.com/x?list=PL123"), None);
+        assert_eq!(playlist_id("https://www.youtube.com/playlist?list=PL<script>"), None);
     }
 }

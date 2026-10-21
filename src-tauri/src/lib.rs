@@ -1,10 +1,11 @@
 mod commands;
 mod notify;
+mod quick;
 mod state;
 mod tray;
 mod window;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use tauri::{Emitter, Manager, WindowEvent};
@@ -30,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -52,10 +54,13 @@ pub fn run() {
             );
             // o histórico carregado já foi notificado em sessões anteriores
             FINISHED.lock().unwrap().extend(manager.list().iter().map(|j| j.id));
+            manager.set_max_parallel(settings.lock().unwrap().max_parallel);
             tauri::async_runtime::spawn(manager.clone().run_worker());
 
-            app.manage(AppState { manager, settings, data_dir });
+            app.manage(AppState { manager, settings: settings.clone(), data_dir });
             tray::create(app.handle())?;
+            // atalho indisponível não impede o app de abrir (o erro aparece nos Ajustes)
+            let _ = quick::apply_shortcut(app.handle(), &settings.lock().unwrap());
             Ok(())
         })
         .on_window_event(|win, event| match event {
@@ -70,7 +75,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::enqueue,
+            commands::enqueue_many,
+            commands::profiles,
+            commands::playlist_info,
+            commands::shortcut_status,
+            commands::pause_shortcut,
             commands::cancel,
+            commands::cancel_all,
             commands::retry,
             commands::clear_finished,
             commands::remove_job,
@@ -142,6 +153,10 @@ fn env_provider(
 /// por exemplo, o aviso de arquivo excluído).
 static FINISHED: LazyLock<Mutex<HashSet<Uuid>>> = LazyLock::new(Default::default);
 
+/// Placar de cada playlist em andamento (subpasta → concluídos, falhas).
+/// Playlists geram um aviso só, quando o último vídeo dela termina.
+static BATCHES: LazyLock<Mutex<HashMap<String, (usize, usize)>>> = LazyLock::new(Default::default);
+
 /// Repassa cada atualização de job para a UI, atualiza o ícone da bandeja
 /// e notifica no fim do download.
 fn job_sink(app: tauri::AppHandle) -> Sink {
@@ -164,9 +179,41 @@ fn job_sink(app: tauri::AppHandle) -> Sink {
             tray::note_finished(stage, window::is_visible(&app));
             // avisa sempre que um download termina (com a janela aberta ou não)
             if state.settings.lock().unwrap().notify {
-                notify::job_finished(&app, job);
+                match &job.subdir {
+                    None => notify::job_finished(&app, job),
+                    Some(sub) => note_batch(&app, &state, job, sub),
+                }
             }
         }
         tray::refresh(&app);
     })
+}
+
+fn note_batch(app: &tauri::AppHandle, state: &AppState, job: &Job, sub: &str) {
+    use tubetray_core::Stage;
+    let summary = {
+        let mut batches = BATCHES.lock().unwrap();
+        let entry = batches.entry(sub.to_string()).or_default();
+        match job.snapshot.stage {
+            Stage::Done => entry.0 += 1,
+            Stage::Failed => entry.1 += 1,
+            _ => {}
+        }
+        let pending = state
+            .manager
+            .list()
+            .iter()
+            .any(|j| j.subdir.as_deref() == Some(sub) && is_active(j.snapshot.stage));
+        if pending {
+            None
+        } else {
+            batches.remove(sub)
+        }
+    };
+    if let Some((done, failed)) = summary {
+        if done + failed > 0 {
+            let folder = state.settings.lock().unwrap().out_dir.join(sub);
+            notify::batch_finished(app, sub, done, failed, Some(folder.to_string_lossy().into_owned()));
+        }
+    }
 }

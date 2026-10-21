@@ -1,13 +1,20 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
-import { api, type VideoInfo } from "../lib/tauri";
-import { looksLikeYoutube } from "../lib/format";
+import { api, type PlaylistInfo, type VideoInfo } from "../lib/tauri";
+import { hasVideo, looksLikeYoutube, playlistParam } from "../lib/format";
 import { modKey } from "../lib/platform";
+import { selectProfile, useSettings } from "../store/settings";
+import { FormatPicker } from "./FormatPicker";
 import { Icon } from "./Icon";
+import { PlaylistPicker, type PlaylistState } from "./PlaylistPicker";
 import { VideoPreview, type PreviewState } from "./VideoPreview";
 
 /** prévias já buscadas nesta sessão (por link) */
 const previewCache = new Map<string, VideoInfo>();
+/** playlists já lidas nesta sessão (por id + link de mix) */
+const playlistCache = new Map<string, PlaylistInfo>();
+
+const allAvailable = (info: PlaylistInfo) => new Set(info.entries.filter((e) => e.available).map((e) => e.id));
 
 export interface UrlFormHandle {
   /** Preenche com o link da área de transferência (se for do YouTube). */
@@ -28,13 +35,53 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
   const autoFilled = useRef<string | null>(null);
 
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [playlist, setPlaylist] = useState<PlaylistState | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [notice, setNotice] = useState<string | null>(null);
+  const profileId = useSettings((s) => selectProfile(s)?.id ?? null);
 
   const trimmed = url.trim();
   const valid = looksLikeYoutube(trimmed);
+  const listId = valid ? playlistParam(trimmed) : null;
+  const isVideo = valid && hasVideo(trimmed);
+  // link só de playlist abre direto a escolha; vídeo dentro de playlist pergunta
+  const [wantList, setWantList] = useState(false);
+  useEffect(() => setWantList(!!listId && !isVideo), [listId, isVideo, trimmed]);
+  const playlistMode = !!listId && (wantList || !isVideo);
 
-  // prévia (título + miniatura) quando há um link válido no campo
+  // vídeos da playlist, quando o usuário quer escolher os itens
   useEffect(() => {
-    if (!valid) {
+    if (!playlistMode) {
+      setPlaylist(null);
+      return;
+    }
+    const key = listId!.startsWith("RD") ? trimmed : listId!;
+    const cached = playlistCache.get(key);
+    if (cached) {
+      setPlaylist({ kind: "ready", info: cached });
+      setSelected(allAvailable(cached));
+      return;
+    }
+    let stale = false;
+    setPlaylist({ kind: "loading" });
+    api.playlistInfo(trimmed).then(
+      (info) => {
+        playlistCache.set(key, info);
+        if (stale) return;
+        setPlaylist({ kind: "ready", info });
+        setSelected(allAvailable(info));
+      },
+      (err) => !stale && setPlaylist({ kind: "error", message: String(err) }),
+    );
+    return () => {
+      stale = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playlistMode, listId]);
+
+  // prévia (título + miniatura) quando há um link de vídeo no campo
+  useEffect(() => {
+    if (!valid || !isVideo || playlistMode) {
       setPreview(null);
       return;
     }
@@ -58,12 +105,17 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
       stale = true;
       clearTimeout(timer);
     };
-  }, [trimmed, valid]);
+  }, [trimmed, valid, isVideo, playlistMode]);
   const shownError = error ?? (touched && trimmed && !valid ? INVALID : null);
+
+  const chosen =
+    playlist?.kind === "ready" ? playlist.info.entries.filter((e) => e.available && selected.has(e.id)) : [];
+  const canSubmit = valid && !busy && (playlistMode ? chosen.length > 0 : isVideo);
 
   const fill = (text: string) => {
     setUrl(text);
     setError(null);
+    setNotice(null);
     setTouched(true);
     requestAnimationFrame(() => {
       input.current?.focus();
@@ -102,10 +154,20 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!valid || busy) return;
+    if (!canSubmit) return;
     setBusy(true);
     try {
-      await api.enqueue(trimmed, preview?.kind === "ready" ? preview.info.title : null);
+      if (playlistMode && playlist?.kind === "ready") {
+        const added = await api.enqueueMany(
+          chosen.map((e) => ({ url: e.url, title: e.title })),
+          profileId,
+          playlist.info.title,
+        );
+        setNotice(`${added === 1 ? "1 vídeo entrou" : `${added} vídeos entraram`} na fila.`);
+      } else {
+        await api.enqueue(trimmed, preview?.kind === "ready" ? preview.info.title : null, profileId);
+        setNotice(null);
+      }
       setUrl("");
       setTouched(false);
       setError(null);
@@ -135,6 +197,7 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
           onChange={(e) => {
             setUrl(e.target.value);
             setError(null);
+            setNotice(null);
           }}
           onBlur={() => setTouched(true)}
           onPaste={() => setTouched(true)}
@@ -144,7 +207,35 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
         </button>
       </label>
 
-      {preview && !shownError && <VideoPreview key={trimmed} state={preview} />}
+      {preview && !shownError && !playlistMode && <VideoPreview key={trimmed} state={preview} />}
+
+      {listId && isVideo && !playlistMode && !shownError && (
+        <div className="playlist-offer">
+          <span>Faz parte de uma playlist ·</span>
+          <button type="button" className="link-button" onClick={() => setWantList(true)}>
+            Escolher vídeos
+          </button>
+        </div>
+      )}
+
+      {playlist && !shownError && (
+        <PlaylistPicker
+          state={playlist}
+          selected={selected}
+          onToggle={(id) =>
+            setSelected((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+          onToggleAll={(all) =>
+            setSelected(all && playlist.kind === "ready" ? allAvailable(playlist.info) : new Set())
+          }
+          onBack={isVideo ? () => setWantList(false) : undefined}
+        />
+      )}
 
       {shownError && (
         <div className="field-message" role="alert">
@@ -153,7 +244,16 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
         </div>
       )}
 
-      <button type="submit" className="primary-button" disabled={!valid || busy}>
+      {notice && !trimmed && (
+        <div className="field-message ok" role="status">
+          <Icon name="check-circle" />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <FormatPicker />
+
+      <button type="submit" className="primary-button" disabled={!canSubmit}>
         {busy ? (
           <>
             <span className="spinner" aria-hidden="true" />
@@ -162,7 +262,11 @@ export const UrlForm = forwardRef<UrlFormHandle>(function UrlForm(_props, ref) {
         ) : (
           <>
             <Icon name="download" />
-            Baixar
+            {playlistMode && chosen.length > 0
+              ? chosen.length === 1
+                ? "Baixar 1 vídeo"
+                : `Baixar ${chosen.length} vídeos`
+              : "Baixar"}
           </>
         )}
       </button>

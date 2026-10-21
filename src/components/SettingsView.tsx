@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -7,6 +7,10 @@ import { links, support } from "../lib/support";
 import { shortPath } from "../lib/platform";
 import { useJobs, selectActiveCount } from "../store/jobs";
 import { useSettings } from "../store/settings";
+import { Icon } from "./Icon";
+import { ShortcutField } from "./ShortcutField";
+
+const PARALLEL = [1, 2, 3, 4, 5];
 
 interface Props {
   home: string | null;
@@ -38,7 +42,8 @@ function Toggle({
 
 /** Ajustes (§7.11, versão compacta dentro do popover). */
 export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
-  const { settings, update, error } = useSettings();
+  const { settings, update, error, profiles } = useSettings();
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
   const activeCount = useJobs(selectActiveCount);
   const [version, setVersion] = useState<string | null | undefined>(undefined);
   const [updating, setUpdating] = useState(false);
@@ -49,6 +54,7 @@ export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
 
   useEffect(() => {
     api.ytdlpVersion().then(setVersion, () => setVersion(null));
+    api.shortcutStatus().then(setShortcutError, () => {});
     getVersion().then(setAppVersion, () => {});
   }, []);
 
@@ -57,6 +63,14 @@ export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
     setPixCopied(true);
     setTimeout(() => setPixCopied(false), 2000);
   };
+
+  const changeShortcut = useCallback(
+    async (shortcut: string) => {
+      const ok = await update({ shortcut, shortcutEnabled: true });
+      setShortcutError(ok ? null : useSettings.getState().error);
+    },
+    [update],
+  );
 
   if (!settings) return null;
 
@@ -85,6 +99,24 @@ export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
             onChange={(v) => update({ launchAtLogin: v })}
           />
           <Toggle
+            label="Atalho global"
+            hint="Baixa o link copiado de qualquer app"
+            checked={settings.shortcutEnabled}
+            onChange={async (v) => {
+              const ok = await update({ shortcutEnabled: v });
+              setShortcutError(ok ? null : useSettings.getState().error);
+            }}
+          />
+          {settings.shortcutEnabled && (
+            <div className={`group-row${shortcutError ? " error" : ""}`}>
+              <span className="label">
+                <span>Teclas</span>
+                <small>{shortcutError ?? "Clique para trocar"}</small>
+              </span>
+              <ShortcutField value={settings.shortcut} onChange={changeShortcut} />
+            </div>
+          )}
+          <Toggle
             label="Detectar link no clipboard"
             hint="Preenche o campo ao abrir"
             checked={settings.readClipboard}
@@ -112,9 +144,49 @@ export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
           </div>
           <div className="group-row">
             <span className="label">
-              <span>Formato</span>
-              <small>MP4 · H.264 + AAC (melhor qualidade disponível)</small>
+              <span>Formato padrão</span>
+              <small>{profiles.find((p) => p.id === settings.profileId)?.hint ?? ""}</small>
             </span>
+            <label className="popup">
+              <select
+                aria-label="Formato padrão"
+                value={settings.profileId}
+                onChange={(e) => update({ profileId: e.target.value })}
+              >
+                {(["video", "audio"] as const).map((kind) => (
+                  <optgroup key={kind} label={kind === "video" ? "Vídeo" : "Áudio"}>
+                    {profiles
+                      .filter((p) => p.kind === kind)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <Icon name="chevron-updown" />
+            </label>
+          </div>
+          <div className="group-row">
+            <span className="label">
+              <span>Downloads simultâneos</span>
+              <small>Quantos vídeos baixam ao mesmo tempo</small>
+            </span>
+            <label className="popup narrow">
+              <select
+                aria-label="Downloads simultâneos"
+                value={settings.maxParallel}
+                onChange={(e) => update({ maxParallel: Number(e.target.value) })}
+              >
+                {PARALLEL.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <Icon name="chevron-updown" />
+            </label>
           </div>
         </div>
       </section>
@@ -196,7 +268,7 @@ export function SettingsView({ home, onPickFolder, onOpenLicenses }: Props) {
         </div>
       </section>
 
-      {error && (
+      {error && error !== shortcutError && (
         <div className="field-message" role="alert">
           {error}
         </div>

@@ -746,3 +746,249 @@ button.keycap:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- Opções §7.5: Vídeo | Áudio + formato ---------- */
+.options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.segmented {
+  display: inline-flex;
+  height: 24px;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--r-md);
+  background: var(--fill);
+  flex: none;
+}
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: var(--fs-callout);
+  color: var(--label-2);
+  transition: background var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+.segmented button .icon {
+  width: 12px;
+  height: 12px;
+}
+.segmented button:hover {
+  color: var(--label);
+}
+.segmented button.selected {
+  background: var(--segment-selected);
+  color: var(--label);
+  font-weight: 500;
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.2);
+}
+.segmented button:focus-visible,
+.popup select:focus-visible,
+.keycap-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* popup button: <select> nativo com a aparência do design */
+.popup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.popup select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 28px;
+  max-width: 100%;
+  padding: 0 24px 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--fs-callout);
+  text-overflow: ellipsis;
+  cursor: default;
+}
+.popup select:hover {
+  background: var(--track);
+}
+.popup select option,
+.popup select optgroup {
+  background: var(--popover-solid);
+  color: var(--label);
+}
+.popup > .icon {
+  position: absolute;
+  right: 7px;
+  width: 11px;
+  height: 11px;
+  color: var(--label-2);
+  pointer-events: none;
+}
+.popup.narrow select {
+  min-width: 52px;
+}
+
+.field-message.ok {
+  color: var(--success);
+}
+.playlist-offer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-callout);
+  line-height: 15px;
+  color: var(--label-2);
+  padding: 0 var(--sp-1);
+}
+.group-row .popup {
+  flex: none;
+}
+
+/* ---------- Playlist §7.4 ---------- */
+.playlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  animation: fade-in var(--dur-base) var(--ease);
+}
+.pl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px var(--sp-1) 0;
+}
+.pl-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-callout);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.playlist input[type="checkbox"] {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  accent-color: var(--accent);
+}
+.pl-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  max-height: 152px;
+  overflow-y: auto;
+  border-radius: var(--r-lg);
+  background: var(--fill);
+}
+.pl-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 34px;
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+}
+.pl-item:hover {
+  background: var(--row-hover);
+}
+.pl-index {
+  width: 18px;
+  flex: none;
+  text-align: right;
+  font-size: var(--fs-caption);
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+.pl-thumb {
+  width: 44px;
+  height: 25px;
+  flex: none;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--track);
+}
+.pl-thumb.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--label-3);
+}
+.pl-thumb.placeholder .icon {
+  width: 12px;
+  height: 12px;
+}
+.pl-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pl-duration {
+  flex: none;
+  font-size: var(--fs-caption);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.pl-list li.unavailable .pl-title,
+.pl-list li.unavailable .pl-thumb {
+  opacity: 0.45;
+}
+.pl-note {
+  font-size: var(--fs-caption);
+  color: var(--label-2);
+  padding: 0 var(--sp-1);
+}
+
+/* ---------- Atalho global (Ajustes) ---------- */
+.keycap-button {
+  flex: none;
+  min-width: 64px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+  box-shadow: inset 0 -1px 0 var(--separator);
+  color: var(--label);
+  font-size: var(--fs-callout);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.keycap-button:hover {
+  background: var(--track);
+}
+.keycap-button.recording {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ---------- Formato na linha de download ---------- */
+.row-format {
+  flex: none;
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 4px;
+  margin-right: 4px;
+  border-radius: 4px;
+  background: var(--fill);
+  color: var(--label-2);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.list-actions {
+  display: inline-flex;
+  gap: var(--sp-3);
+}

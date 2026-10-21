@@ -163,7 +163,7 @@ pub async fn run(
         match status {
             Ok(s) if s.success() => {
                 tracker.finish(Stage::Done, None);
-                confirm_output(&mut tracker, &spec.out_dir);
+                confirm_output(&mut tracker, spec);
                 if let Some(file) = tracker.snapshot().file.clone() {
                     let size = tokio::fs::metadata(&file).await.ok().map(|m| m.len());
                     tracker.set_size(size);
@@ -188,7 +188,7 @@ pub async fn run(
 /// Garante que o caminho guardado é o do arquivo que existe no disco.
 /// Se o caminho informado pelo yt-dlp não existir (ex.: acentos
 /// corrompidos), procura pelo id do vídeo na pasta de destino.
-fn confirm_output(tracker: &mut Tracker, out_dir: &Path) {
+fn confirm_output(tracker: &mut Tracker, spec: &RunSpec) {
     let reported_ok = tracker
         .snapshot()
         .file
@@ -198,7 +198,7 @@ fn confirm_output(tracker: &mut Tracker, out_dir: &Path) {
         return;
     }
     let Some(id) = tracker.video_id.clone() else { return };
-    if let Some(found) = crate::files::find_by_id(out_dir, &id) {
+    if let Some(found) = crate::files::find_by_id(&spec.out_dir, &id, spec.profile.extensions()) {
         if tracker.snapshot().title.as_deref().is_none_or(crate::files::is_garbled) {
             tracker.set_title(crate::files::title_from_file(&found, &id));
         }

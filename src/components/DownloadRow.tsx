@@ -5,6 +5,11 @@ import { revealLabel } from "../lib/platform";
 import { useJobs } from "../store/jobs";
 import { Icon, type IconName } from "./Icon";
 
+const isAudio = (job: Job) => job.profileId.startsWith("audio");
+
+/** etiqueta curta do formato (o MP4 compatível, padrão, não tem) */
+const FORMAT_TAG: Record<string, string> = { best: "HQ", "audio-m4a": "M4A", "audio-mp3": "MP3" };
+
 function statusText(job: Job, ytdlpInstall: number | null): string {
   switch (job.stage) {
     case "queued":
@@ -18,7 +23,7 @@ function statusText(job: Job, ytdlpInstall: number | null): string {
         .filter(Boolean)
         .join(" · ");
     case "merging":
-      return "Finalizando…";
+      return isAudio(job) ? "Convertendo áudio…" : "Finalizando…";
     case "done":
       if (job.missing) return "Arquivo excluído";
       return ["Concluído", formatSize(job.size)].filter(Boolean).join(" · ");
@@ -63,7 +68,13 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
   const { stage } = job;
   const active = stage === "queued" || stage === "starting" || stage === "downloading" || stage === "merging";
   const deleted = stage === "done" && job.missing;
-  const icon = deleted ? { name: "trash" as IconName, cls: "deleted" } : ROW_ICON[stage];
+  const base = ROW_ICON[stage];
+  const icon = deleted
+    ? { name: "trash" as IconName, cls: "deleted" }
+    : active && isAudio(job)
+      ? { name: "music-note" as IconName, cls: base.cls }
+      : base;
+  const tag = FORMAT_TAG[job.profileId];
   const status = statusText(job, ytdlpInstall);
   const title = job.title ?? job.url.replace(/^https?:\/\/(www\.)?/, "");
 
@@ -95,6 +106,7 @@ export const DownloadRow = memo(function DownloadRow({ job }: { job: Job }) {
           </div>
         )}
         <div className={`row-status${stage === "failed" ? " error" : ""}`} title={status}>
+          {tag && <span className="row-format">{tag}</span>}
           {status}
         </div>
       </div>

@@ -11,7 +11,6 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
-use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 use tubetray_core::Stage;
 
@@ -97,7 +96,7 @@ pub fn create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => window::show(app, true),
-            "paste" => enqueue_clipboard(app),
+            "paste" => crate::quick::paste_and_download(app),
             "folder" => open_out_dir(app),
             "settings" => {
                 window::show(app, true);
@@ -147,14 +146,22 @@ pub fn mark_seen<R: Runtime>(app: &AppHandle<R>) {
 pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let Some(state) = app.try_state::<AppState>() else { return };
     let jobs = state.manager.list();
+    // com vários downloads, o anel mostra a média de todos os ativos
+    // (os da fila contam como 0%)
+    let active: Vec<f64> = jobs
+        .iter()
+        .filter(|j| tubetray_core::queue::is_active(j.snapshot.stage))
+        .map(|j| j.snapshot.percent)
+        .collect();
     let running = jobs
         .iter()
-        .find(|j| matches!(j.snapshot.stage, Stage::Starting | Stage::Downloading | Stage::Merging));
-    let queued = jobs.iter().any(|j| j.snapshot.stage == Stage::Queued);
+        .filter(|j| matches!(j.snapshot.stage, Stage::Starting | Stage::Downloading | Stage::Merging))
+        .count();
+    let overall = if active.is_empty() { 0.0 } else { active.iter().sum::<f64>() / active.len() as f64 };
 
-    let icon = if let Some(j) = running {
-        Icon::Progress((j.snapshot.percent / 10.0).floor().clamp(0.0, 10.0) as u8)
-    } else if queued {
+    let icon = if running > 0 {
+        Icon::Progress((overall / 10.0).floor().clamp(0.0, 10.0) as u8)
+    } else if !active.is_empty() {
         Icon::Progress(0)
     } else if UNSEEN_ERROR.load(Ordering::Relaxed) {
         Icon::Error
@@ -176,24 +183,15 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     if let Ok(img) = Image::from_bytes(frames()[icon.index()]) {
         let _ = tray.set_icon(Some(img));
     }
-    let tip = match (icon, running) {
-        (Icon::Progress(_), Some(j)) => format!("TubeTray — baixando {}%", j.snapshot.percent.floor()),
-        (Icon::Progress(_), None) => "TubeTray — na fila".into(),
-        (Icon::Error, _) => "TubeTray — um download falhou".into(),
-        (Icon::Done, _) => "TubeTray — download concluído".into(),
-        (Icon::Idle, _) => "TubeTray".into(),
+    let tip = match icon {
+        Icon::Progress(_) if running == 0 => "TubeTray — na fila".into(),
+        Icon::Progress(_) if active.len() == 1 => format!("TubeTray — baixando {}%", overall.floor()),
+        Icon::Progress(_) => format!("TubeTray — {} downloads · {}%", active.len(), overall.floor()),
+        Icon::Error => "TubeTray — um download falhou".into(),
+        Icon::Done => "TubeTray — download concluído".into(),
+        Icon::Idle => "TubeTray".into(),
     };
     let _ = tray.set_tooltip(Some(tip));
-}
-
-fn enqueue_clipboard<R: Runtime>(app: &AppHandle<R>) {
-    let text = app.clipboard().read_text().unwrap_or_default();
-    let state = app.state::<AppState>();
-    let profile = crate::commands::current_profile(&state);
-    if state.manager.enqueue(&text, profile, None).is_err() {
-        // link inválido ou repetido: abre o popover para o usuário ver/colar
-        window::show(app, true);
-    }
 }
 
 fn open_out_dir<R: Runtime>(app: &AppHandle<R>) {

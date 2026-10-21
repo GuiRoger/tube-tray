@@ -5,7 +5,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { api, events } from "./lib/tauri";
 import { hasMod } from "./lib/platform";
 import { useJobs } from "./store/jobs";
-import { useSettings } from "./store/settings";
+import { selectProfile, useSettings } from "./store/settings";
 import { Header } from "./components/Header";
 import { UrlForm, type UrlFormHandle } from "./components/UrlForm";
 import { DownloadList } from "./components/DownloadList";
@@ -24,6 +24,7 @@ export default function App() {
   const [view, setView] = useState<View>("main");
   const [home, setHome] = useState<string | null>(null);
   const settings = useSettings((s) => s.settings);
+  const audio = useSettings((s) => selectProfile(s)?.kind === "audio");
   const loadSettings = useSettings((s) => s.load);
   const updateSettings = useSettings((s) => s.update);
   const form = useRef<UrlFormHandle>(null);
@@ -121,7 +122,7 @@ export default function App() {
     <div className="popover" ref={root}>
       <div className="top">
         <Header
-          title={TITLES[view]}
+          title={view === "main" && audio ? "Baixar áudio" : TITLES[view]}
           onOpenFolder={() => api.openOutDir()}
           onSettings={() => setView((v) => (v === "main" ? "settings" : "main"))}
           settingsActive={view !== "main"}

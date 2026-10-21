@@ -4,7 +4,9 @@
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
-use tubetray_core::{tools, Job, Profile, Settings, VideoInfo};
+use serde::Deserialize;
+use tauri::Emitter;
+use tubetray_core::{tools, Job, PlaylistInfo, Profile, Settings, VideoInfo};
 use uuid::Uuid;
 
 use crate::state::AppState;
@@ -17,10 +19,94 @@ pub fn current_profile(state: &AppState) -> Profile {
     Profile::by_id(&id).unwrap_or_default()
 }
 
+/// Perfil pedido pela UI; sem id (ou id desconhecido), o padrão dos ajustes.
+fn pick_profile(state: &AppState, id: Option<String>) -> Profile {
+    id.and_then(|id| Profile::by_id(&id)).unwrap_or_else(|| current_profile(state))
+}
+
+/// Formatos disponíveis (Vídeo: compatível, melhor; Áudio: M4A, MP3).
 #[tauri::command]
-pub fn enqueue(state: State<'_, AppState>, url: String, title: Option<String>) -> CmdResult<Job> {
-    let profile = current_profile(&state);
+pub fn profiles() -> Vec<Profile> {
+    Profile::builtin()
+}
+
+#[tauri::command]
+pub fn enqueue(
+    state: State<'_, AppState>,
+    url: String,
+    title: Option<String>,
+    profile_id: Option<String>,
+) -> CmdResult<Job> {
+    let profile = pick_profile(&state, profile_id);
     state.manager.enqueue(&url, profile, title).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+pub struct BatchItem {
+    url: String,
+    title: Option<String>,
+}
+
+/// Coloca vários vídeos (itens escolhidos de uma playlist) na fila, numa
+/// subpasta com o nome da playlist. Repetidos são ignorados. Devolve
+/// quantos entraram.
+#[tauri::command]
+pub fn enqueue_many(
+    state: State<'_, AppState>,
+    items: Vec<BatchItem>,
+    profile_id: Option<String>,
+    subdir: Option<String>,
+) -> CmdResult<usize> {
+    let profile = pick_profile(&state, profile_id);
+    let added = items
+        .into_iter()
+        .filter(|it| {
+            state
+                .manager
+                .enqueue_in(&it.url, profile.clone(), it.title.clone(), subdir.clone())
+                .is_ok()
+        })
+        .count();
+    if added == 0 {
+        return Err("Esses vídeos já estão na fila.".into());
+    }
+    Ok(added)
+}
+
+/// Vídeos de uma playlist (baixa o yt-dlp antes, se for a primeira vez).
+#[tauri::command]
+pub async fn playlist_info(app: AppHandle, url: String) -> CmdResult<PlaylistInfo> {
+    let bin_dir = app.state::<AppState>().data_dir.join("bin");
+    let mut last_pct = u64::MAX;
+    let ytdlp = tools::ensure_ytdlp(&bin_dir, |done, total| {
+        let pct = total.map(|t| done * 100 / t.max(1)).unwrap_or(0);
+        if pct != last_pct {
+            last_pct = pct;
+            let _ = app.emit(crate::EV_YTDLP_DOWNLOAD, (done, total));
+        }
+    })
+    .await?;
+    tubetray_core::playlist::playlist_info(&ytdlp, &url).await
+}
+
+/// Desliga o atalho global enquanto o usuário grava um novo (senão o
+/// sistema "engole" as teclas do atalho atual) e religa depois.
+#[tauri::command]
+pub fn pause_shortcut(app: AppHandle, state: State<'_, AppState>, paused: bool) {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    if paused {
+        let _ = app.global_shortcut().unregister_all();
+    } else {
+        let settings = state.settings.lock().unwrap().clone();
+        let _ = crate::quick::apply_shortcut(&app, &settings);
+    }
+}
+
+/// `None` se o atalho global está registrado (ou desligado); senão o erro.
+#[tauri::command]
+pub fn shortcut_status(app: AppHandle, state: State<'_, AppState>) -> Option<String> {
+    let settings = state.settings.lock().unwrap().clone();
+    crate::quick::apply_shortcut(&app, &settings).err()
 }
 
 /// Título, canal e miniatura do vídeo colado (prévia antes de baixar).
@@ -39,6 +125,11 @@ pub fn refresh_files(state: State<'_, AppState>) {
 #[tauri::command]
 pub fn cancel(state: State<'_, AppState>, id: Uuid) -> bool {
     state.manager.cancel(id)
+}
+
+#[tauri::command]
+pub fn cancel_all(state: State<'_, AppState>) -> usize {
+    state.manager.cancel_all()
 }
 
 #[tauri::command]
@@ -85,9 +176,27 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, settings: Settin
     };
     result.map_err(|e| format!("Não foi possível alterar o início automático: {e}"))?;
 
+    let mut settings = settings;
+    settings.max_parallel = settings.max_parallel.clamp(1, tubetray_core::queue::MAX_PARALLEL);
+    if Profile::by_id(&settings.profile_id).is_none() {
+        settings.profile_id = Profile::DEFAULT_ID.into();
+    }
+
+    // atalho: se o novo não puder ser registrado, volta ao anterior
+    let previous = state.settings.lock().unwrap().clone();
+    let shortcut_changed =
+        previous.shortcut != settings.shortcut || previous.shortcut_enabled != settings.shortcut_enabled;
+    if shortcut_changed {
+        if let Err(e) = crate::quick::apply_shortcut(&app, &settings) {
+            let _ = crate::quick::apply_shortcut(&app, &previous);
+            return Err(e);
+        }
+    }
+
     settings
         .save(&state.data_dir)
         .map_err(|e| format!("Não foi possível salvar as configurações: {e}"))?;
+    state.manager.set_max_parallel(settings.max_parallel);
     *state.settings.lock().unwrap() = settings.clone();
     Ok(settings)
 }

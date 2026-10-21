@@ -5,7 +5,7 @@
 <h1 align="center">TubeTray</h1>
 
 <p align="center">
-  Copie o link, clique no ícone da bandeja e baixe o vídeo em MP4.<br />
+  Copie o link, clique no ícone da bandeja e baixe o vídeo (ou só o áudio).<br />
   Windows e macOS · gratuito, sem anúncios e de código aberto.
 </p>
 
@@ -23,10 +23,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="340" alt="Janela do TubeTray com o link colado, a prévia do vídeo e a lista de downloads" />
+  <img src="docs/screenshot.png" width="300" alt="Janela do TubeTray com o link colado, a prévia do vídeo, a escolha de formato e a lista de downloads" />
+  &nbsp;
+  <img src="docs/screenshot-playlist.png" width="300" alt="Janela do TubeTray com uma playlist aberta e os vídeos marcados para baixar" />
 </p>
 
-O TubeTray fica na bandeja do Windows ou na barra de menu do Mac. Copie o link de um vídeo do YouTube, clique no ícone e ele já aparece colado, com miniatura, título e canal. Um clique em **Baixar** e o MP4 (H.264 + AAC) cai na pasta `Downloads/TubeTray`, com uma notificação quando termina. Por baixo, ele usa o [yt-dlp](https://github.com/yt-dlp/yt-dlp) e o [FFmpeg](https://ffmpeg.org).
+O TubeTray fica na bandeja do Windows ou na barra de menu do Mac. Copie o link de um vídeo do YouTube, clique no ícone e ele já aparece colado, com miniatura, título e canal. Escolha **Vídeo** ou **Áudio**, clique em **Baixar** e o arquivo cai na pasta `Downloads/TubeTray`, com uma notificação quando termina. Também baixa playlists (você escolhe quais vídeos) e tem um atalho global que baixa o link copiado sem abrir nada. Por baixo, ele usa o [yt-dlp](https://github.com/yt-dlp/yt-dlp) e o [FFmpeg](https://ffmpeg.org).
 
 > **Use com responsabilidade.** Baixe apenas conteúdo que você tem direito de baixar: seus próprios vídeos, conteúdos com licença livre ou com permissão de quem os criou.
 
@@ -56,17 +58,32 @@ Abra o `TubeTray-windows-x64-setup.exe`. Se o SmartScreen avisar, clique em *Mai
 
 ## Como usar
 
-1. Copie o link do vídeo (`youtube.com/watch`, `youtu.be`, Shorts ou live gravada).
+1. Copie o link do vídeo (`youtube.com/watch`, `youtu.be`, Shorts, live gravada ou playlist).
 2. Clique no ícone do TubeTray: o link já vem colado, com a prévia do vídeo.
-3. Clique em **Baixar** (ou Enter). Pode fechar a janela: o progresso aparece no próprio ícone.
+3. Escolha **Vídeo** ou **Áudio** e o formato, e clique em **Baixar** (ou Enter). Pode fechar a janela: o progresso aparece no próprio ícone.
 
-Mais coisas que ele faz:
+Ou, sem abrir nada: copie o link e aperte **Ctrl+Alt+Y** (Windows) / **⌥⌘Y** (Mac). O vídeo entra na fila no formato escolhido por último e uma notificação confirma.
 
-- Fila: cole vários links seguidos; eles baixam um por vez. Dá para cancelar e tentar de novo.
+### Formatos
+
+| | Formato | Para quê |
+|---|---|---|
+| Vídeo | **Compatível · MP4** (padrão) | H.264 + AAC até 1080p; abre em qualquer player, celular ou editor. É o mesmo resultado de `yt-dlp -S "vcodec:h264,res,acodec:m4a" --merge-output-format mp4`. |
+| Vídeo | **Melhor qualidade** | A maior resolução disponível (4K/8K, HDR), em AV1/VP9; sai em MP4 quando dá, senão MKV. No Windows, AV1/VP9 podem pedir a extensão de vídeo da Microsoft Store ou um player como o VLC. |
+| Áudio | **M4A · alta** | Só o áudio, em AAC, sem reconverter quando o YouTube já entrega M4A. |
+| Áudio | **MP3** | Só o áudio, em MP3 VBR (~245 kbps), com título e artista no arquivo. |
+
+### Playlists
+
+Cole o link de uma playlist (`youtube.com/playlist?list=…`): o TubeTray lista os vídeos com miniatura e duração, todos marcados. Desmarque o que não quiser e clique em **Baixar N vídeos**. Eles vão para uma subpasta com o nome da playlist e, no fim, chega uma notificação só com o resumo. Se o link for de um vídeo dentro de uma playlist, ele baixa só o vídeo, com a opção **Escolher vídeos** para abrir a playlist. Mostra até 500 vídeos por playlist.
+
+### Mais coisas que ele faz
+
+- Fila com downloads simultâneos (2 por padrão; de 1 a 5 em *Ajustes*). Dá para cancelar um, cancelar todos e tentar de novo.
 - Histórico dos últimos 100 downloads, com atalhos para abrir o vídeo ou mostrá-lo na pasta. Se você apagar um arquivo, ele aparece riscado, com a opção de baixar de novo.
 - Notificação do sistema ao concluir ou falhar, com o título do vídeo.
-- Ajustes: pasta de destino, abrir ao iniciar sessão, detectar link copiado, notificações e atualização do yt-dlp com um clique.
-- Tema claro e escuro, atalhos `Esc`, `Ctrl/⌘ + O` (pasta), `Ctrl/⌘ + ,` (ajustes) e `Ctrl/⌘ + Q` (sair).
+- Ajustes: pasta de destino, formato padrão, downloads simultâneos, atalho global (troque as teclas ou desligue), abrir ao iniciar sessão, detectar link copiado, notificações e atualização do yt-dlp com um clique.
+- Tema claro e escuro e atalhos na janela: `Ctrl/⌘ + 1` / `2` (Vídeo / Áudio), `Esc`, `Ctrl/⌘ + O` (pasta), `Ctrl/⌘ + ,` (ajustes) e `Ctrl/⌘ + Q` (sair).
 
 ## Apoie o desenvolvedor
 
@@ -80,11 +97,13 @@ O TubeTray é gratuito e continua assim, sem nada travado e sem anúncios. Se el
 
 Stack: **Tauri 2** (núcleo em Rust) + **React/TypeScript** (Vite). Visual conforme [`design/DESIGN_SYSTEM.md`](design/DESIGN_SYSTEM.md). O plano do projeto e o **checklist de validação** de cada versão ficam em [`docs/PLANO.md`](docs/PLANO.md).
 
-O download usa o mesmo resultado deste comando:
+O formato padrão dá o mesmo resultado deste comando:
 
 ```
 yt-dlp -S "vcodec:h264,res,acodec:m4a" --merge-output-format mp4 "<link>"
 ```
+
+Os outros formatos ficam em [`src-tauri/core/src/profile.rs`](src-tauri/core/src/profile.rs); um formato novo é só mais um perfil ali.
 
 ### Pré-requisitos (uma vez)
 
@@ -110,13 +129,14 @@ O **yt-dlp** não vem no repositório: o app baixa a versão mais recente do Git
 Ver só a interface no navegador, sem Rust (dados simulados):
 
 ```bash
-npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | invalid | settings | preview | licenses
+npm run dev:mock          # http://localhost:1420/?s=list | empty | notice | invalid | settings | preview
+                          #   | audio | playlist | playlist-video | parallel | licenses
 ```
 
 ### Publicar uma versão
 
 ```bash
-git tag v0.1.2
+git tag v1.0.0
 git push --tags
 ```
 
@@ -129,20 +149,22 @@ Para gerar só os instaladores, sem release: *Actions → build → Run workflow
 ```bash
 npm test                  # formatação (vitest)
 npx tsc -b                # tipos
-npm run test:core         # núcleo Rust: URL, progresso, fila, histórico, settings
+npm run test:core         # núcleo Rust: URL, perfis, playlist, progresso, fila paralela, histórico, settings
 ```
 
 Testes com o yt-dlp real contra um servidor HTTP local:
 
 ```bash
-TT_YTDLP=/caminho/yt-dlp TT_CLIP_URL=http://127.0.0.1:8765/clip.mp4 cargo test --manifest-path src-tauri/core/Cargo.toml --test real_ytdlp
+TT_YTDLP=/caminho/yt-dlp TT_FFMPEG=/caminho/ffmpeg TT_CLIP_URL=http://127.0.0.1:8765/clip.mp4 \
+  cargo test --manifest-path src-tauri/core/Cargo.toml --test real_ytdlp
 ```
 
 ### Estrutura
 
 ```
 src/                      UI React
-  components/             Header, UrlForm, VideoPreview, DownloadList/Row, Footer, Settings, Licenses
+  components/             Header, UrlForm, VideoPreview, PlaylistPicker, FormatPicker,
+                          DownloadList/Row, Footer, Settings, ShortcutField, Licenses
   styles/tokens.css       tokens do design system (claro/escuro/alto contraste)
   assets/icons/           ícones de UI do design system
   assets/licenses/        textos das licenças + lista de componentes (npm run licenses)
@@ -150,8 +172,9 @@ src/                      UI React
   lib/support.ts          links de apoio (Sponsors, Pix opcional)
   dev/mock.ts             simulação do núcleo para `dev:mock`
 src-tauri/
-  core/                   crate sem UI: fila, runner do yt-dlp, progresso, histórico, prévia, settings
-  src/                    app Tauri: bandeja, janela popover, notificações, comandos
+  core/                   crate sem UI: perfis, fila paralela, runner do yt-dlp, progresso,
+                          playlist, histórico, prévia, settings
+  src/                    app Tauri: bandeja, janela popover, atalho global, notificações, comandos
   icons/                  ícone do app, bandeja (windows/, macos/) e notificação
 scripts/                  fetch-ffmpeg.mjs, third-party.mjs
 design/                   design system e gerador de ícones
@@ -161,15 +184,17 @@ docs/PLANO.md             escopo, status e checklist de validação
 ### Como funciona
 
 - O núcleo chama o yt-dlp com o perfil acima e pede linhas próprias de progresso (`--progress-template`, `--print`, `--encoding utf-8`), em vez de interpretar a saída de texto. Vídeo e áudio viram uma barra só.
-- Um download por vez; os outros ficam na fila. Cancelar encerra o yt-dlp e o ffmpeg e apaga os temporários.
-- Arquivos saem como `Título [id].mp4` na pasta escolhida. O id no nome permite achar o arquivo mesmo se o caminho informado vier com acentos corrompidos.
+- Até N downloads ao mesmo tempo (Ajustes, 1 a 5); os outros ficam na fila. Cancelar encerra o yt-dlp e o ffmpeg e apaga os temporários.
+- Playlists são lidas com `yt-dlp --flat-playlist -J` (só a lista, rápido) e cada vídeo escolhido vira um item da fila, numa subpasta com o nome da playlist.
+- O atalho global é registrado no sistema (`tauri-plugin-global-shortcut`); se outro app já usa as teclas, os Ajustes avisam.
+- Arquivos saem como `Título [id].ext` na pasta escolhida. O id no nome permite achar o arquivo mesmo se o caminho informado vier com acentos corrompidos.
 - A prévia usa o oEmbed do YouTube (sem chave de API).
 - O histórico fica em `history.json` (últimos 100) e os ajustes em `settings.json`, na pasta de dados do app.
 - A página do projeto ([tubetray.vercel.app](https://tubetray.vercel.app/)) fica num repositório separado (`tube-tray-landing-page`).
 
 ### Próximos passos
 
-Escolha Vídeo/Áudio e qualidade, playlists, pausar/retomar, downloads simultâneos, atalho global, auto-update do app, assinatura de código.
+Versão 1.1: Linux, atualização automática do app e instaladores assinados (Windows e Mac). Depois: pausar/retomar, legendas, escolher a resolução.
 
 ## Licença
 

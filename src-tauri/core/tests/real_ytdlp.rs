@@ -82,3 +82,32 @@ async fn failure_has_message() {
     assert_eq!(snap.stage, Stage::Failed);
     assert!(snap.error.is_some_and(|e| !e.is_empty()));
 }
+
+/// Perfis de áudio (e "melhor qualidade") com o ffmpeg de `TT_FFMPEG`, se
+/// definido (o mesmo binário que vai no instalador, sem ffprobe).
+#[tokio::test]
+async fn other_profiles_produce_the_right_file() {
+    let Some((ytdlp, url)) = env() else { return };
+    let ffmpeg = std::env::var("TT_FFMPEG").ok().map(Into::into);
+    for (profile, ext) in [
+        (Profile::audio_mp3(), "mp3"),
+        (Profile::audio_m4a(), "m4a"),
+        (Profile::best(), "mp4"),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let spec = RunSpec {
+            ytdlp: ytdlp.clone().into(),
+            ffmpeg: ffmpeg.clone(),
+            out_dir: dir.path().to_path_buf(),
+            profile: profile.clone(),
+            url: url.clone(),
+        };
+        let snap = run(&spec, CancellationToken::new(), |_| {}).await;
+        assert_eq!(snap.stage, Stage::Done, "{}: {:?}", profile.id, snap.error);
+        let file = snap.file.expect("arquivo final");
+        assert!(file.ends_with(&format!(".{ext}")), "{}: {file}", profile.id);
+        assert!(std::path::Path::new(&file).is_file());
+        // só o arquivo final fica na pasta (o vídeo original some no -x)
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1, "{}", profile.id);
+    }
+}

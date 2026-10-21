@@ -16,6 +16,8 @@ export interface Job {
   url: string;
   profileId: string;
   createdAt: number;
+  /** subpasta (nome da playlist), quando veio de uma playlist */
+  subdir?: string | null;
   stage: Stage;
   title: string | null;
   /** 0–100 somando vídeo e áudio */
@@ -40,6 +42,34 @@ export interface VideoInfo {
   thumbnail: string;
 }
 
+export type MediaKind = "video" | "audio";
+
+export interface Profile {
+  id: string;
+  kind: MediaKind;
+  name: string;
+  hint: string;
+}
+
+export interface PlaylistEntry {
+  id: string;
+  url: string;
+  title: string;
+  /** segundos */
+  duration: number | null;
+  thumbnail: string;
+  /** privado ou removido */
+  available: boolean;
+}
+
+export interface PlaylistInfo {
+  id: string;
+  title: string;
+  channel: string;
+  entries: PlaylistEntry[];
+  truncated: boolean;
+}
+
 export interface Settings {
   outDir: string;
   launchAtLogin: boolean;
@@ -47,13 +77,26 @@ export interface Settings {
   readClipboard: boolean;
   notify: boolean;
   acceptedNotice: boolean;
+  /** downloads ao mesmo tempo (1–5) */
+  maxParallel: number;
+  shortcutEnabled: boolean;
+  /** formato do Tauri: "CommandOrControl+Alt+Y" */
+  shortcut: string;
 }
 
 export const api = {
-  enqueue: (url: string, title?: string | null) => invoke<Job>("enqueue", { url, title: title ?? null }),
+  enqueue: (url: string, title?: string | null, profileId?: string | null) =>
+    invoke<Job>("enqueue", { url, title: title ?? null, profileId: profileId ?? null }),
+  enqueueMany: (items: { url: string; title: string | null }[], profileId: string | null, subdir: string | null) =>
+    invoke<number>("enqueue_many", { items, profileId, subdir }),
+  profiles: () => invoke<Profile[]>("profiles"),
+  playlistInfo: (url: string) => invoke<PlaylistInfo>("playlist_info", { url }),
+  shortcutStatus: () => invoke<string | null>("shortcut_status"),
+  pauseShortcut: (paused: boolean) => invoke<void>("pause_shortcut", { paused }),
   videoInfo: (url: string) => invoke<VideoInfo>("video_info", { url }),
   refreshFiles: () => invoke<void>("refresh_files"),
   cancel: (id: string) => invoke<boolean>("cancel", { id }),
+  cancelAll: () => invoke<number>("cancel_all"),
   retry: (id: string) => invoke<boolean>("retry", { id }),
   clearFinished: () => invoke<Job[]>("clear_finished"),
   removeJob: (id: string) => invoke<boolean>("remove_job", { id }),

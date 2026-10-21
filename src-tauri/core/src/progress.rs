@@ -212,7 +212,9 @@ impl Tracker {
 /// Traduz os erros mais comuns do yt-dlp para mensagens curtas em português.
 pub fn friendly_error(raw: &str) -> String {
     let l = raw.to_ascii_lowercase();
-    let msg = if l.contains("private video") {
+    let msg = if l.contains("playlist does not exist") || l.contains("this playlist type is unviewable") {
+        "Playlist não encontrada ou privada."
+    } else if l.contains("private video") {
         "Este vídeo é privado."
     } else if l.contains("confirm your age") || l.contains("age-restricted") || l.contains("inappropriate for some users") {
         "Vídeo com restrição de idade; o YouTube exige login."
@@ -232,9 +234,9 @@ pub fn friendly_error(raw: &str) -> String {
     {
         "Sem conexão com o YouTube. Verifique a internet."
     } else if l.contains("ffmpeg") {
-        "Falha ao juntar vídeo e áudio (ffmpeg)."
+        "Falha no ffmpeg ao juntar ou converter o arquivo."
     } else if l.contains("requested format is not available") {
-        "Formato MP4 (H.264) indisponível para este vídeo."
+        "Formato escolhido indisponível para este vídeo. Tente outro."
     } else if l.contains("no space left") {
         "Sem espaço em disco na pasta de destino."
     } else {

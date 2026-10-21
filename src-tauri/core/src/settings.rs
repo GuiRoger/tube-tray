@@ -14,7 +14,16 @@ pub struct Settings {
     pub notify: bool,
     /// aviso de uso responsável já confirmado (DESIGN_SYSTEM §12)
     pub accepted_notice: bool,
+    /// downloads ao mesmo tempo (1–5)
+    pub max_parallel: usize,
+    /// atalho global "baixar o link copiado"
+    pub shortcut_enabled: bool,
+    /// no formato do Tauri, ex.: "CommandOrControl+Alt+Y"
+    pub shortcut: String,
 }
+
+/// Ctrl+Alt+Y no Windows, ⌥⌘Y no Mac.
+pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Alt+Y";
 
 impl Default for Settings {
     fn default() -> Self {
@@ -25,6 +34,9 @@ impl Default for Settings {
             read_clipboard: true,
             notify: true,
             accepted_notice: false,
+            max_parallel: crate::queue::DEFAULT_PARALLEL,
+            shortcut_enabled: true,
+            shortcut: DEFAULT_SHORTCUT.into(),
         }
     }
 }
@@ -75,5 +87,7 @@ mod tests {
         let old = Settings::load(dir.path());
         assert_eq!(old.out_dir, Path::new("/x"));
         assert!(old.notify);
+        assert_eq!(old.max_parallel, 2);
+        assert_eq!(old.shortcut, DEFAULT_SHORTCUT);
     }
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "TubeTray",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "io.github.guiroger.tubetray",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -41,7 +41,7 @@
       "dmg"
     ],
     "category": "Utility",
-    "shortDescription": "Baixe vídeos do YouTube em MP4 pela bandeja",
+    "shortDescription": "Baixe vídeos e áudios do YouTube pela bandeja",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

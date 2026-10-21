@@ -43,11 +43,12 @@ fn is_temp(name: &str) -> bool {
             .is_some_and(|seg| seg.len() > 1 && seg.starts_with('f') && seg[1..].chars().all(|c| c.is_ascii_digit()))
 }
 
-/// Procura em `dir` o arquivo final do vídeo `id` (prefere .mp4, depois o
-/// mais recente). Ignora temporários de downloads incompletos.
-pub fn find_by_id(dir: &Path, id: &str) -> Option<PathBuf> {
+/// Procura em `dir` o arquivo final do vídeo `id`. Prefere as extensões
+/// de `prefer` (na ordem dada) e, entre iguais, o mais recente. Ignora
+/// temporários de downloads incompletos.
+pub fn find_by_id(dir: &Path, id: &str, prefer: &[&str]) -> Option<PathBuf> {
     let tag = format!("[{id}]");
-    let mut found: Vec<(bool, std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)
+    let mut found: Vec<(usize, std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)
         .ok()?
         .filter_map(Result::ok)
         .filter_map(|e| {
@@ -56,12 +57,32 @@ pub fn find_by_id(dir: &Path, id: &str) -> Option<PathBuf> {
                 return None;
             }
             let meta = e.metadata().ok().filter(|m| m.is_file())?;
-            let mp4 = name.to_ascii_lowercase().ends_with(".mp4");
-            Some((mp4, meta.modified().unwrap_or(std::time::UNIX_EPOCH), e.path()))
+            let ext = name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+            let rank = prefer.iter().position(|p| *p == ext).unwrap_or(prefer.len());
+            Some((rank, meta.modified().unwrap_or(std::time::UNIX_EPOCH), e.path()))
         })
         .collect();
-    found.sort_by_key(|f| std::cmp::Reverse((f.0, f.1)));
+    found.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
     found.into_iter().next().map(|(_, _, p)| p)
+}
+
+/// Nome seguro de pasta no Windows e no macOS (ex.: título da playlist).
+pub fn safe_dir_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| if c.is_control() || "<>:\"/\\|?*".contains(c) { ' ' } else { c })
+        .collect();
+    let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut out: String = collapsed.chars().take(80).collect();
+    // o Windows não aceita nomes terminados em ponto ou espaço
+    while out.ends_with(['.', ' ']) {
+        out.pop();
+    }
+    let reserved = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
+    if reserved.iter().any(|r| out.eq_ignore_ascii_case(r)) {
+        out.push('_');
+    }
+    out.trim_start_matches('.').trim().to_string()
 }
 
 /// "Título [id].mp4" → "Título" (para recuperar um título corrompido).
@@ -85,15 +106,27 @@ mod tests {
     }
 
     #[test]
+    fn safe_names() {
+        assert_eq!(safe_dir_name("Aulas: Rust / Tokio?"), "Aulas Rust Tokio");
+        assert_eq!(safe_dir_name("  Mix.. "), "Mix");
+        assert_eq!(safe_dir_name("con"), "con_");
+        assert_eq!(safe_dir_name("../.."), "");
+        assert_eq!(safe_dir_name(&"a".repeat(200)).len(), 80);
+    }
+
+    #[test]
     fn finds_final_file_by_id() {
         let dir = tempfile::tempdir().unwrap();
         for n in ["Vídeos [abc12345678].f137.mp4", "Vídeos [abc12345678].mp4.part", "Outro [zzz12345678].mp4"] {
             std::fs::write(dir.path().join(n), b"x").unwrap();
         }
-        assert_eq!(find_by_id(dir.path(), "abc12345678"), None);
+        assert_eq!(find_by_id(dir.path(), "abc12345678", &["mp4"]), None);
         std::fs::write(dir.path().join("Vídeos [abc12345678].mp4"), b"x").unwrap();
-        let found = find_by_id(dir.path(), "abc12345678").unwrap();
+        std::fs::write(dir.path().join("Vídeos [abc12345678].mp3"), b"x").unwrap();
+        let found = find_by_id(dir.path(), "abc12345678", &["mp4"]).unwrap();
         assert!(found.ends_with("Vídeos [abc12345678].mp4"));
+        let audio = find_by_id(dir.path(), "abc12345678", &["mp3"]).unwrap();
+        assert!(audio.ends_with("Vídeos [abc12345678].mp3"));
         assert_eq!(title_from_file(&found, "abc12345678").as_deref(), Some("Vídeos"));
     }
 }

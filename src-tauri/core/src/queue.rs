@@ -1,4 +1,4 @@
-//! Fila de downloads: um worker, um vídeo por vez, cancelável.
+//! Fila de downloads: até N vídeos ao mesmo tempo, cancelável.
 //!
 //! A fila não conhece a UI. Quem a cria passa:
 //! - `EnvProvider`: resolve yt-dlp, ffmpeg e pasta de destino na hora de
@@ -10,6 +10,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -26,6 +27,10 @@ use crate::youtube_url;
 
 /// Quantos jobs finalizados o histórico guarda.
 pub const HISTORY_LIMIT: usize = 100;
+
+/// Limites de downloads simultâneos.
+pub const MAX_PARALLEL: usize = 5;
+pub const DEFAULT_PARALLEL: usize = 2;
 
 #[derive(Debug, Clone)]
 pub struct RunEnv {
@@ -45,6 +50,9 @@ pub struct Job {
     pub profile_id: String,
     /// epoch em milissegundos
     pub created_at: u64,
+    /// subpasta dentro da pasta de destino (ex.: nome da playlist)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subdir: Option<String>,
     #[serde(flatten)]
     pub snapshot: Snapshot,
     #[serde(skip)]
@@ -55,7 +63,7 @@ pub struct Job {
 pub enum EnqueueError {
     #[error("Isso não parece um link de vídeo do YouTube.")]
     InvalidUrl,
-    #[error("Este vídeo já está na fila.")]
+    #[error("Este vídeo já está na fila neste formato.")]
     Duplicate,
 }
 
@@ -63,6 +71,10 @@ struct Inner {
     jobs: Mutex<Vec<Job>>,
     cancels: Mutex<HashMap<Uuid, CancellationToken>>,
     wake: Notify,
+    /// downloads simultâneos permitidos
+    max_parallel: AtomicUsize,
+    /// downloads em andamento agora
+    running: AtomicUsize,
     env: EnvProvider,
     sink: Sink,
     history: Option<PathBuf>,
@@ -116,7 +128,15 @@ fn repair_path(job: &mut Job) -> bool {
     else {
         return false;
     };
-    let Some(found) = crate::files::find_by_id(&dir, &id) else { return false };
+    let recorded = job
+        .snapshot
+        .file
+        .as_deref()
+        .and_then(|f| Path::new(f).extension())
+        .map(|e| e.to_string_lossy().to_ascii_lowercase());
+    let mut prefer: Vec<&str> = recorded.as_deref().into_iter().collect();
+    prefer.extend(job.profile.extensions());
+    let Some(found) = crate::files::find_by_id(&dir, &id, &prefer) else { return false };
     if job.snapshot.title.as_deref().is_none_or(crate::files::is_garbled) {
         if let Some(t) = crate::files::title_from_file(&found, &id) {
             job.snapshot.title = Some(t);
@@ -152,6 +172,8 @@ impl DownloadManager {
                 jobs: Mutex::new(jobs),
                 cancels: Mutex::new(HashMap::new()),
                 wake: Notify::new(),
+                max_parallel: AtomicUsize::new(DEFAULT_PARALLEL),
+                running: AtomicUsize::new(0),
                 env,
                 sink,
                 history,
@@ -178,35 +200,66 @@ impl DownloadManager {
         }
     }
 
+    /// Quantos downloads podem rodar ao mesmo tempo (1 a [`MAX_PARALLEL`]).
+    /// Vale na hora: se aumentar, a fila anda; se diminuir, os que já
+    /// começaram terminam normalmente.
+    pub fn set_max_parallel(&self, n: usize) {
+        self.inner.max_parallel.store(n.clamp(1, MAX_PARALLEL), Ordering::Relaxed);
+        self.inner.wake.notify_one();
+    }
+
+    pub fn max_parallel(&self) -> usize {
+        self.inner.max_parallel.load(Ordering::Relaxed)
+    }
+
+    /// Reserva o próximo job da fila, se houver vaga. Marca como
+    /// `Starting` dentro do lock para o mesmo job não ser pego duas vezes.
+    fn claim_next(&self) -> Option<(Job, CancellationToken)> {
+        let mut jobs = self.inner.jobs.lock().unwrap();
+        if self.inner.running.load(Ordering::SeqCst) >= self.max_parallel() {
+            return None;
+        }
+        let job = jobs.iter_mut().find(|j| j.snapshot.stage == Stage::Queued)?;
+        job.snapshot = Snapshot { stage: Stage::Starting, title: job.snapshot.title.clone(), ..queued_snapshot() };
+        let token = CancellationToken::new();
+        self.inner.cancels.lock().unwrap().insert(job.id, token.clone());
+        self.inner.running.fetch_add(1, Ordering::SeqCst);
+        Some((job.clone(), token))
+    }
+
     /// Loop do worker. O app chama uma vez, num task do runtime async.
+    /// Cada download roda no seu próprio task.
     pub async fn run_worker(self) {
         loop {
-            let next = {
-                let jobs = self.inner.jobs.lock().unwrap();
-                jobs.iter().find(|j| j.snapshot.stage == Stage::Queued).cloned()
-            };
-            match next {
-                Some(job) => self.process(job).await,
-                None => self.inner.wake.notified().await,
+            while let Some((job, token)) = self.claim_next() {
+                (self.inner.sink)(&job);
+                let this = self.clone();
+                tokio::spawn(async move {
+                    let id = job.id;
+                    this.process(job, token).await;
+                    this.inner.cancels.lock().unwrap().remove(&id);
+                    this.inner.running.fetch_sub(1, Ordering::SeqCst);
+                    this.inner.wake.notify_one();
+                });
             }
+            self.inner.wake.notified().await;
         }
     }
 
-    async fn process(&self, job: Job) {
-        let token = CancellationToken::new();
-        self.inner.cancels.lock().unwrap().insert(job.id, token.clone());
-
-        let mut starting = queued_snapshot();
-        starting.stage = Stage::Starting;
-        self.update(job.id, starting.clone());
+    async fn process(&self, job: Job, token: CancellationToken) {
+        let starting = Snapshot { stage: Stage::Starting, ..queued_snapshot() };
 
         let final_snap = tokio::select! {
             env = (self.inner.env)() => match env {
                 Ok(env) => {
+                    let out_dir = match &job.subdir {
+                        Some(sub) => env.out_dir.join(sub),
+                        None => env.out_dir,
+                    };
                     let spec = RunSpec {
                         ytdlp: env.ytdlp,
                         ffmpeg: env.ffmpeg,
-                        out_dir: env.out_dir,
+                        out_dir,
                         profile: job.profile.clone(),
                         url: job.url.clone(),
                     };
@@ -220,7 +273,6 @@ impl DownloadManager {
         };
 
         self.update(job.id, final_snap);
-        self.inner.cancels.lock().unwrap().remove(&job.id);
     }
 
     fn update(&self, id: Uuid, snap: Snapshot) {
@@ -250,10 +302,26 @@ impl DownloadManager {
     /// Coloca um vídeo na fila. `title` (opcional) é o título já conhecido
     /// pela prévia, para a lista mostrar o nome desde o início.
     pub fn enqueue(&self, url: &str, profile: Profile, title: Option<String>) -> Result<Job, EnqueueError> {
+        self.enqueue_in(url, profile, title, None)
+    }
+
+    /// Igual a [`enqueue`](Self::enqueue), salvando numa subpasta da pasta
+    /// de destino (usado para playlists).
+    pub fn enqueue_in(
+        &self,
+        url: &str,
+        profile: Profile,
+        title: Option<String>,
+        subdir: Option<String>,
+    ) -> Result<Job, EnqueueError> {
         let url = youtube_url::normalize(url).ok_or(EnqueueError::InvalidUrl)?;
+        let subdir = subdir.map(|s| crate::files::safe_dir_name(&s)).filter(|s| !s.is_empty());
         let job = {
             let mut jobs = self.inner.jobs.lock().unwrap();
-            if jobs.iter().any(|j| j.url == url && is_active(j.snapshot.stage)) {
+            if jobs
+                .iter()
+                .any(|j| j.url == url && j.profile_id == profile.id && is_active(j.snapshot.stage))
+            {
                 return Err(EnqueueError::Duplicate);
             }
             let job = Job {
@@ -261,6 +329,7 @@ impl DownloadManager {
                 url,
                 profile_id: profile.id.clone(),
                 created_at: now_ms(),
+                subdir,
                 snapshot: Snapshot { title: title.filter(|t| !t.trim().is_empty()), ..queued_snapshot() },
                 profile,
             };
@@ -292,6 +361,18 @@ impl DownloadManager {
         (self.inner.sink)(&job);
         self.save_history();
         true
+    }
+
+    /// Cancela tudo que está na fila ou em andamento. Devolve quantos.
+    pub fn cancel_all(&self) -> usize {
+        let ids: Vec<Uuid> = {
+            let jobs = self.inner.jobs.lock().unwrap();
+            // os da fila primeiro, para nenhum começar enquanto os outros param
+            let mut v: Vec<&Job> = jobs.iter().filter(|j| is_active(j.snapshot.stage)).collect();
+            v.sort_by_key(|j| j.snapshot.stage != Stage::Queued);
+            v.into_iter().map(|j| j.id).collect()
+        };
+        ids.into_iter().filter(|id| self.cancel(*id)).count()
     }
 
     /// Recoloca na fila um job que falhou, foi cancelado ou cujo arquivo
@@ -375,6 +456,10 @@ impl DownloadManager {
         v
     }
 
+    pub fn active_count(&self) -> usize {
+        self.inner.jobs.lock().unwrap().iter().filter(|j| is_active(j.snapshot.stage)).count()
+    }
+
     pub fn has_active(&self) -> bool {
         self.inner
             .jobs
@@ -436,6 +521,9 @@ mod tests {
         assert!(!m.has_active());
         assert!(m.retry(job.id));
         assert_eq!(m.list()[0].snapshot.stage, Stage::Queued);
+        m.enqueue("https://youtu.be/aaaaaaaaaaa", Profile::default(), None).unwrap();
+        assert_eq!(m.cancel_all(), 2);
+        assert!(!m.has_active());
     }
 
     #[tokio::test]
@@ -517,5 +605,71 @@ mod tests {
         assert!(m2.retry(job.id));
         assert_eq!(m2.list()[0].snapshot.stage, Stage::Queued);
         assert!(!m2.list()[0].snapshot.missing);
+    }
+
+    /// yt-dlp falso que só espera um pouco e termina bem.
+    #[cfg(unix)]
+    fn sleepy_env(dir: PathBuf) -> EnvProvider {
+        use std::os::unix::fs::PermissionsExt;
+        let bin = dir.join("fake-yt-dlp");
+        std::fs::write(&bin, "#!/bin/sh\nsleep 0.4\n").unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        Arc::new(move || {
+            let (bin, dir) = (bin.clone(), dir.clone());
+            Box::pin(async move { Ok(RunEnv { ytdlp: bin, ffmpeg: None, out_dir: dir }) })
+        })
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn runs_up_to_max_parallel() {
+        let dir = tempfile::tempdir().unwrap();
+        let (m, _) = manager_with(sleepy_env(dir.path().into()));
+        m.set_max_parallel(2);
+        tokio::spawn(m.clone().run_worker());
+        for id in ["aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc"] {
+            m.enqueue(&format!("https://youtu.be/{id}"), Profile::default(), None).unwrap();
+        }
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        let stages: Vec<_> = m.list().iter().map(|j| j.snapshot.stage).collect();
+        let running = stages.iter().filter(|s| matches!(s, Stage::Starting | Stage::Downloading)).count();
+        assert_eq!(running, 2, "{stages:?}");
+        assert_eq!(stages.iter().filter(|s| **s == Stage::Queued).count(), 1);
+        // o terceiro começa quando um termina
+        for _ in 0..200 {
+            if m.list().iter().all(|j| j.snapshot.stage == Stage::Done) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert!(m.list().iter().all(|j| j.snapshot.stage == Stage::Done), "{:?}", m.list());
+        assert_eq!(m.inner.running.load(Ordering::SeqCst), 0);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn raising_the_limit_starts_queued_jobs() {
+        let dir = tempfile::tempdir().unwrap();
+        let (m, _) = manager_with(sleepy_env(dir.path().into()));
+        m.set_max_parallel(1);
+        tokio::spawn(m.clone().run_worker());
+        for id in ["aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc"] {
+            m.enqueue(&format!("https://youtu.be/{id}"), Profile::default(), None).unwrap();
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(m.list().iter().filter(|j| j.snapshot.stage == Stage::Queued).count(), 2);
+        m.set_max_parallel(3);
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(m.list().iter().filter(|j| j.snapshot.stage == Stage::Queued).count(), 0);
+    }
+
+    #[test]
+    fn same_video_in_another_format_and_subfolder() {
+        let (m, _) = manager_with(failing_env());
+        m.enqueue(URL, Profile::default(), None).unwrap();
+        // mesmo vídeo como MP3 pode; repetido no mesmo formato não
+        let audio = m.enqueue_in(URL, Profile::audio_mp3(), None, Some("Minha: playlist".into())).unwrap();
+        assert_eq!(audio.subdir.as_deref(), Some("Minha playlist"));
+        assert_eq!(m.enqueue(URL, Profile::audio_mp3(), None).unwrap_err(), EnqueueError::Duplicate);
     }
 }
